@@ -37,6 +37,7 @@ export function chooseIntermediateCard(observation, { rng = Math.random } = {}) 
   const { legalActions, ownHand, vira } = observation;
   if (legalActions.length === 0) return null;
   if (observation.phase !== 'awaitingPlay' || observation.activePlayerId !== observation.playerId) return null;
+  if (!legalActions.some(action => action.type === 'playCard')) return null;
   const cards = ownHand.filter(card => legalActions.some(action => action.type === 'playCard' &&
     action.playerId === observation.playerId && action.instanceId === card.instanceId))
     .sort((a, b) => compareCards(a, b, vira));
@@ -92,9 +93,10 @@ export function createCardAI({ rng = Math.random, strategy = chooseIntermediateC
     chooseAction(observation) {
       const action = strategy(observation, { rng });
       if (action === null) return null;
-      const legal = observation.legalActions.find(candidate => candidate.type === 'playCard' &&
+      const legal = observation.legalActions.find(candidate =>
+        candidate.playerId === observation.playerId &&
         candidate.type === action?.type && candidate.playerId === action.playerId &&
-        candidate.instanceId === action.instanceId);
+        candidate.instanceId === action.instanceId && candidate.value === action.value);
       if (!legal) throw new RangeError('Strategy returned an illegal action');
       return legal;
     },

@@ -1,5 +1,9 @@
 # Sistema de apostas — v0.3.0, Pacote 5
 
+O [Pacote 6 — IA de apostas](betting-ai-v0.3.md) acrescenta decisões de aposta
+e blefes sobre as mesmas regras. A observação passa a listar apostas legais;
+a IA restrita a cartas continua sem respondê-las.
+
 O `MatchController` controla a progressão imutável `BET_VALUES = [1, 3, 6, 9, 12]`.
 O valor aceito e a proposta pendente são estados independentes. Não há saltos de
 nível nem valores acima de 12.
@@ -76,9 +80,9 @@ A distribuição seguinte reinicia a aposta em 1 e preserva o histórico da mão
 anterior. Falha por monte insuficiente não apaga o resultado nem as apostas.
 
 O adaptador `createMatchObservation` copia o estado público em `betting` e os
-novos campos dos resultados, sem expor dados privados. A IA de cartas recebe
-uma lista vazia de ações legais enquanto aguarda uma aposta e retorna `null`.
-Não foram criadas decisões de aposta, blefes ou ações de aposta para a IA.
+novos campos dos resultados, sem expor dados privados. A IA de cartas não recebe
+ações de carta enquanto aguarda uma aposta e retorna `null`. A política completa
+do Pacote 6 pode escolher entre as ações de aposta autorizadas na mesma observação.
 
 Validação: `tests/betting.test.js` cobre todos os níveis, aceite, recusa,
 contra-apostas, turnos suspensos, alternância do direito, novas vazas, rejeições

@@ -1,5 +1,9 @@
 # IA de cartas — v0.3.0, Pacote 4
 
+O [Pacote 6 — IA de apostas](betting-ai-v0.3.md) compõe esta estratégia em
+`createTrucoAI`. `createCardAI` continua restrita a cartas; `legalActions` agora
+inclui também apostas autorizadas, que essa estratégia ignora.
+
 Os novos módulos em `src/game/ai/` são independentes do Phaser e não alteram
 o controlador, o Deck ou a demonstração visual existente.
 

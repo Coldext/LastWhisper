@@ -293,7 +293,8 @@ test('betting results and observations are immutable, public and survive hands f
     nextRaiseValue: match.nextRaiseValue, history: match.bettingHistory,
   });
   assert.notEqual(view.betting.pendingProposal, match.pendingBet);
-  assert.deepEqual(view.legalActions, []);
+  assert.deepEqual(view.legalActions.filter(action => action.type === 'playCard'), []);
+  assert.ok(view.legalActions.some(action => action.type === 'acceptBet'));
   assert.equal(createCardAI().chooseAction(view), null); // Card AI never answers bets.
   for (const id of hiddenIds.filter(id => id !== publicCard)) {
     assert.equal(JSON.stringify(view).includes(id), false);

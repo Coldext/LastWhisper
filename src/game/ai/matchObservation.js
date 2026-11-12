@@ -57,9 +57,15 @@ export function createMatchObservation(match, playerId, { score = null } = {}) {
   }
   if (vira) revealed.set(vira.definitionId, vira);
   for (const card of plays) revealed.set(card.definitionId, face(card));
-  const legalActions = Object.freeze(ownHand
+  const actions = ownHand
     .filter(card => match.canPlay(playerId, card.instanceId))
-    .map(card => Object.freeze({ type: 'playCard', playerId, instanceId: card.instanceId })));
+    .map(card => ({ type: 'playCard', playerId, instanceId: card.instanceId }));
+  if (match.canRequestRaise(playerId)) actions.push({ type: 'requestRaise', playerId, value: match.nextRaiseValue });
+  if (match.canRespondToBet(playerId)) {
+    actions.push({ type: 'acceptBet', playerId }, { type: 'fold', playerId });
+    if (match.canCounterRaise(playerId)) actions.push({ type: 'counterRaise', playerId, value: match.nextRaiseValue });
+  }
+  const legalActions = Object.freeze(actions.map(action => Object.freeze(action)));
   return Object.freeze({
     playerId, opponentId, phase: match.phase, handNumber: match.handNumber,
     firstPlayerId: match.firstPlayerId, activePlayerId: match.activePlayerId,

@@ -82,7 +82,8 @@ test('observation reveals only played faces, public history and explicitly suppl
   assert.equal(observation.plays[0].instanceId, lead.instanceId);
   assert.ok(observation.revealedCards.some(card => card.instanceId === lead.instanceId));
   assert.equal(observation.opponentCardCount, 2);
-  assert.equal(observation.legalActions.length, 3);
+  assert.equal(observation.legalActions.filter(action => action.type === 'playCard').length, 3);
+  assert.ok(observation.legalActions.some(action => action.type === 'requestRaise'));
   assert.deepEqual(observation.score, { player: 5, opponent: 3 });
   assert.notEqual(observation.score, points);
   assert.throws(() => { observation.score.player = 10; }, TypeError);
@@ -224,8 +225,9 @@ test('seeded simulations finish complete hands with legal actions, private views
           const id = match.activePlayerId;
           const view = createMatchObservation(match, id);
           const before = JSON.stringify(match.deck);
+          const cardActions = view.legalActions.filter(action => action.type === 'playCard');
           const action = id === 'opponent' ? ai.chooseAction(view)
-            : view.legalActions[Math.floor(playerRng() * view.legalActions.length)];
+            : cardActions[Math.floor(playerRng() * cardActions.length)];
           assert.equal(JSON.stringify(match.deck), before);
           assert.ok(view.legalActions.includes(action));
           assert.equal(match.canPlay(id, action.instanceId), true);
