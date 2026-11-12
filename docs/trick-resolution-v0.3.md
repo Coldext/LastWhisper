@@ -1,5 +1,8 @@
 # Resolução de vazas — v0.3.0, Pacote 3
 
+O [Pacote 5](betting-v0.3.md) acrescenta apostas e encerramento por recusa,
+preservando as regras de resolução descritas aqui.
+
 O `MatchController` integra `compareCards` do CardStrength usando a mesma vira
 durante toda a mão. Uma vaza recebe exatamente uma carta de cada jogador.
 A segunda jogada coloca o motor em `resolvingTrick`, sem jogador ativo; o
@@ -20,7 +23,7 @@ vazas; em um resultado 2–0, as cartas restantes continuam nas mãos. Não exis
 terceira vaza após a segunda vitória. O motor bloqueia jogadas até a resolução
 pendente e depois do encerramento da mão. `resolveTrick()` fora da fase correta
 lança erro sem mutação. A antiga API provisória `completeHand()` foi removida;
-a mão só pode ser encerrada pela resolução de duas vitórias.
+a mão encerra pela resolução de duas vitórias ou por recusa de aposta (Pacote 5).
 
 Consultas para apresentação futura:
 

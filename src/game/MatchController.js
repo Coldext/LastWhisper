@@ -2,12 +2,13 @@ import { Deck } from './deck/Deck.js';
 import { compareCards, getManilhaRank } from './rules/CardStrength.js';
 
 export const PLAYER_IDS = Object.freeze(['player', 'opponent']);
+export const BET_VALUES = Object.freeze([1, 3, 6, 9, 12]);
 export const MATCH_PHASES = Object.freeze({
   READY: 'ready',
   DEALING: 'dealing',
   AWAITING_PLAY: 'awaitingPlay',
   RESOLVING_TRICK: 'resolvingTrick',
-  AWAITING_BET_RESPONSE: 'awaitingBetResponse', // Reserved for the betting package.
+  AWAITING_BET_RESPONSE: 'awaitingBetResponse',
   HAND_COMPLETE: 'handComplete',
   MATCH_COMPLETE: 'matchComplete', // Reserved for the scoring package.
 });
@@ -21,6 +22,10 @@ function cardIdentity(card) {
   return Object.freeze({
     instanceId: card.instanceId, definitionId: card.definitionId, rank: card.rank, suit: card.suit,
   });
+}
+
+function nextBet(value) {
+  return BET_VALUES[BET_VALUES.indexOf(value) + 1] ?? null;
 }
 
 // Authoritative logical state only. No rendering or match scoring.
@@ -37,6 +42,11 @@ export class MatchController {
   #usedCardIds = new Set();
   #tricks = [];
   #handResults = [];
+  #acceptedBet = 1;
+  #pendingBet = null;
+  #resumePlayerId = null;
+  #lastProposerId = null;
+  #bettingHistory = [];
 
   constructor({ rng = Math.random, firstPlayerId = 'player', deck = new Deck() } = {}) {
     validatePlayer(firstPlayerId);
@@ -60,6 +70,12 @@ export class MatchController {
   get plays() { return [...this.#plays]; }
   get tricks() { return [...this.#tricks]; }
   get handResults() { return [...this.#handResults]; }
+  get acceptedBet() { return this.#acceptedBet; }
+  get pendingBet() { return this.#pendingBet; }
+  get resumePlayerId() { return this.#resumePlayerId; }
+  get lastProposerId() { return this.#lastProposerId; }
+  get nextRaiseValue() { return nextBet(this.#pendingBet?.value ?? this.#acceptedBet); }
+  get bettingHistory() { return [...this.#bettingHistory]; }
   get handResult() {
     const last = this.#handResults.at(-1);
     return last?.handNumber === this.#handNumber ? last : null;
@@ -113,6 +129,11 @@ export class MatchController {
     this.#plays = [];
     this.#usedCardIds = new Set();
     this.#tricks = [];
+    this.#acceptedBet = 1;
+    this.#pendingBet = null;
+    this.#resumePlayerId = null;
+    this.#lastProposerId = null;
+    this.#bettingHistory = [];
     this.#handNumber++;
     this.#firstPlayerId = first;
     this.#activePlayerId = first;
@@ -144,6 +165,91 @@ export class MatchController {
     return true;
   }
 
+  // Raises are legal only before the active player's card, including a new
+  // trick and the response to its first card. An accepted proposer cannot raise again.
+  canRequestRaise(playerId, value = this.nextRaiseValue) {
+    return this.#phase === MATCH_PHASES.AWAITING_PLAY && playerId === this.#activePlayerId &&
+      playerId !== this.#lastProposerId && value !== null && value === this.nextRaiseValue;
+  }
+
+  canRespondToBet(playerId) {
+    return this.#phase === MATCH_PHASES.AWAITING_BET_RESPONSE &&
+      playerId === this.#pendingBet.responderId;
+  }
+
+  canCounterRaise(playerId, value = this.nextRaiseValue) {
+    return this.canRespondToBet(playerId) && value !== null && value === this.nextRaiseValue;
+  }
+
+  #recordBet(type, playerId, value) {
+    this.#bettingHistory.push(Object.freeze({
+      type, playerId, value, acceptedValue: this.#acceptedBet,
+      trickNumber: this.#tricks.length + 1, playedCards: this.#plays.length,
+    }));
+  }
+
+  #propose(playerId, value) {
+    this.#pendingBet = Object.freeze({
+      proposerId: playerId, responderId: PLAYER_IDS.find(id => id !== playerId), value,
+    });
+    this.#lastProposerId = playerId;
+  }
+
+  requestRaise(playerId, value = this.nextRaiseValue) {
+    if (!this.canRequestRaise(playerId, value)) return false;
+    this.#resumePlayerId = this.#activePlayerId;
+    this.#activePlayerId = null;
+    this.#propose(playerId, value);
+    this.#phase = MATCH_PHASES.AWAITING_BET_RESPONSE;
+    this.#recordBet('raise', playerId, value);
+    return true;
+  }
+
+  acceptBet(playerId) {
+    if (!this.canRespondToBet(playerId)) return false;
+    this.#acceptedBet = this.#pendingBet.value;
+    this.#recordBet('accept', playerId, this.#acceptedBet);
+    this.#pendingBet = null;
+    this.#activePlayerId = this.#resumePlayerId;
+    this.#resumePlayerId = null;
+    this.#phase = MATCH_PHASES.AWAITING_PLAY;
+    return true;
+  }
+
+  counterRaise(playerId, value = this.nextRaiseValue) {
+    if (!this.canCounterRaise(playerId, value)) return false;
+    // A counter-offer accepts the preceding offer before proposing the next step.
+    this.#acceptedBet = this.#pendingBet.value;
+    this.#propose(playerId, value);
+    this.#recordBet('counterRaise', playerId, value);
+    return true;
+  }
+
+  fold(playerId) {
+    if (!this.canRespondToBet(playerId)) return false;
+    const winnerId = this.#pendingBet.proposerId;
+    this.#recordBet('fold', playerId, this.#pendingBet.value);
+    this.#finishHand(winnerId, 'fold', playerId);
+    return true;
+  }
+
+  #finishHand(winnerId, reason, foldedBy = null) {
+    this.#handResults.push(Object.freeze({
+      handNumber: this.#handNumber, winnerId, reason, foldedBy,
+      acceptedValue: this.#acceptedBet, points: this.#acceptedBet,
+      vira: cardIdentity(this.#vira),
+      plays: Object.freeze(this.#plays.map(play => Object.freeze({
+        playerId: play.playerId, ...cardIdentity(this.#deck.getCard(play.instanceId)),
+      }))),
+      trickWins: this.trickWins, tricks: Object.freeze([...this.#tricks]),
+      bettingHistory: Object.freeze([...this.#bettingHistory]),
+    }));
+    this.#pendingBet = null;
+    this.#resumePlayerId = null;
+    this.#activePlayerId = null;
+    this.#phase = MATCH_PHASES.HAND_COMPLETE;
+  }
+
   // Explicit boundary lets a future presenter display both cards before resolving.
   resolveTrick() {
     this.#requirePhase(MATCH_PHASES.RESOLVING_TRICK);
@@ -169,12 +275,7 @@ export class MatchController {
     this.#tricks.push(result);
     this.#plays = [];
     if (this.trickWins[winnerId] === 2) {
-      this.#handResults.push(Object.freeze({
-        handNumber: this.#handNumber, winnerId,
-        trickWins: this.trickWins, tricks: Object.freeze([...this.#tricks]),
-      }));
-      this.#activePlayerId = null;
-      this.#phase = MATCH_PHASES.HAND_COMPLETE;
+      this.#finishHand(winnerId, 'tricks');
     } else {
       this.#activePlayerId = winnerId;
       this.#phase = MATCH_PHASES.AWAITING_PLAY;

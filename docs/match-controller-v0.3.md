@@ -1,6 +1,8 @@
 # Motor de turnos e distribuição — v0.3.0, Pacote 2
 
 Atualizado pelo [Pacote 3 — resolução de vazas](trick-resolution-v0.3.md).
+As janelas de aumento e o encerramento por recusa estão no
+[Pacote 5 — sistema de apostas](betting-v0.3.md).
 
 `src/game/MatchController.js` usa `Deck` e consulta a manilha pelo CardStrength.
 É independente do Phaser e não altera `DemoGame`, a interface ou o Drag & Drop.
@@ -44,12 +46,12 @@ Fases exportadas em `MATCH_PHASES`:
 | `awaitingPlay` | `play()` passa a vez ou aguarda resolução após duas cartas. |
 | `resolvingTrick` | `resolveTrick()` registra a vaza e libera o vencedor ou encerra a mão. |
 | `handComplete` | `startHand()` permite preparar a próxima mão. |
-| `awaitingBetResponse` | Reservada; sem ações ou transições de aposta implementadas. |
+| `awaitingBetResponse` | Destinatário pode aceitar, correr ou contra-apostar. |
 | `matchComplete` | Reservada; sem pontuação ou término de partida implementados. |
 
 No Pacote 3, a antiga fronteira provisória `completeHand()` foi substituída por
 `resolveTrick()`. A mão encerra automaticamente quando um jogador conquista duas
-vazas; o chamador não pode encerrar antecipadamente. O vencedor de cada vaza
+vazas ou quando o destinatário corre de uma proposta (Pacote 5). O vencedor de cada vaza
 inicia a seguinte. Não há pontuação de partida. Consulte a documentação do
 Pacote 3 para histórico, resultados e consistência de zonas.
 
@@ -67,4 +69,4 @@ anteriores à compra. Não existe corte, callback de corte ou operação equival
 Validação: `npm test` cobre ordem de compra, alternância, turnos, ações inválidas,
 repetições, fases, RNG, esgotamento e preservação de instâncias e metadados.
 `npm run build` valida a aplicação existente; o controlador ainda não é importado
-pelas cenas. Não há IA, apostas, pontuação de partida ou interface nova.
+pelas cenas. Não há pontuação acumulada de partida ou interface nova.

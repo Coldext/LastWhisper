@@ -14,6 +14,11 @@ function trick(result) {
   });
 }
 
+function betEvent(event) {
+  return Object.freeze({ type: event.type, playerId: event.playerId, value: event.value,
+    acceptedValue: event.acceptedValue, trickNumber: event.trickNumber, playedCards: event.playedCards });
+}
+
 // Trusted boundary: only this adapter receives the full controller.
 // Copy an explicit allowlist; never copy card metadata or the deck registry.
 export function createMatchObservation(match, playerId, { score = null } = {}) {
@@ -30,11 +35,22 @@ export function createMatchObservation(match, playerId, { score = null } = {}) {
   const tricks = Object.freeze(match.tricks.map(trick));
   const handResults = Object.freeze(match.handResults.map(result => Object.freeze({
     handNumber: result.handNumber, winnerId: result.winnerId,
+    reason: result.reason, foldedBy: result.foldedBy,
+    acceptedValue: result.acceptedValue, points: result.points,
+    vira: face(result.vira),
+    plays: Object.freeze(result.plays.map(play => Object.freeze({ playerId: play.playerId, ...face(play) }))),
+    bettingHistory: Object.freeze(result.bettingHistory.map(betEvent)),
     trickWins: Object.freeze({ player: result.trickWins.player, opponent: result.trickWins.opponent }),
     tricks: Object.freeze(result.tricks.map(trick)),
   })));
   const vira = match.vira ? face(match.vira) : null;
   const revealed = new Map();
+  // A folded hand may have no resolved tricks, but its vira and played card
+  // were still public and must remain known after the next distribution.
+  for (const result of handResults) {
+    revealed.set(result.vira.definitionId, result.vira);
+    for (const card of result.plays) revealed.set(card.definitionId, face(card));
+  }
   for (const result of [...handResults.flatMap(hand => hand.tricks), ...tricks]) {
     revealed.set(result.vira.definitionId, result.vira);
     for (const card of result.plays) revealed.set(card.definitionId, face(card));
@@ -52,6 +68,16 @@ export function createMatchObservation(match, playerId, { score = null } = {}) {
     revealedCards: Object.freeze([...revealed.values()]),
     trickWins: Object.freeze({ player: match.trickWins.player, opponent: match.trickWins.opponent }),
     score: score === null ? null : Object.freeze({ player: score.player, opponent: score.opponent }),
+    betting: Object.freeze({
+      acceptedValue: match.acceptedBet,
+      pendingProposal: match.pendingBet ? Object.freeze({
+        proposerId: match.pendingBet.proposerId, responderId: match.pendingBet.responderId,
+        value: match.pendingBet.value,
+      }) : null,
+      resumePlayerId: match.resumePlayerId, lastProposerId: match.lastProposerId,
+      nextRaiseValue: match.nextRaiseValue,
+      history: Object.freeze(match.bettingHistory.map(betEvent)),
+    }),
     legalActions,
   });
 }
