@@ -5,10 +5,13 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname, basename } from 'node:path';
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 
 const profile = await mkdtemp(join(tmpdir(), 'ultima-mao-browser-'));
-const server = await createServer({ server: { host: '127.0.0.1', port: 0 } });
+const productionPreview = process.argv.includes('--preview');
+const server = productionPreview
+  ? await preview({ preview: { host: '127.0.0.1', port: 0 } })
+  : await createServer({ server: { host: '127.0.0.1', port: 0 } });
 let browser;
 let socket;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,7 +26,7 @@ async function until(fn, description) {
 }
 
 try {
-  await server.listen();
+  if (!productionPreview) await server.listen();
   const address = server.httpServer.address();
   browser = spawn(process.env.BROWSER_PATH ?? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
     '--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
@@ -46,10 +49,15 @@ try {
   console.log('Browser debugging connected');
   const pending = new Map();
   const errors = [];
+  const failedAssets = [];
   let seq = 0;
   socket.onmessage = event => {
     const message = JSON.parse(event.data);
     if (message.method === 'Runtime.exceptionThrown') errors.push(message.params.exceptionDetails);
+    if (message.method === 'Network.responseReceived' && message.params.response.status >= 400 &&
+        new URL(message.params.response.url).pathname.startsWith(server.config.base)) {
+      failedAssets.push({ url: message.params.response.url, status: message.params.response.status });
+    }
     const request = pending.get(message.id);
     if (request) {
       pending.delete(message.id);
@@ -98,11 +106,15 @@ try {
   async function click(x, y) { await press(x, y); await release(x, y); }
   await cdp('Runtime.enable');
   await cdp('Page.enable');
-  const { runScenarios } = await import('./truco-browser-scenarios.mjs');
+  await cdp('Network.enable');
+  const { runScenarios } = await import(productionPreview ? './pages-browser-smoke.mjs' : './truco-browser-scenarios.mjs');
   await runScenarios({ cdp, evaluate, frames, press, move, release, click,
-    setTouch: value => { touch = value; }, baseURL: `http://127.0.0.1:${address.port}` });
+    setTouch: value => { touch = value; },
+    baseURL: `http://127.0.0.1:${address.port}${server.config.base.replace(/\/$/, '')}` });
   assert.deepEqual(errors, []);
-  console.log('PASS menu navigation and reentry; no browser exceptions');
+  assert.deepEqual(failedAssets, []);
+  console.log(productionPreview ? 'PASS production assets; no browser exceptions'
+    : 'PASS menu navigation and reentry; no browser exceptions');
 } finally {
   socket?.close();
   if (browser && browser.exitCode === null) {

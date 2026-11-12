@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 export async function runScenarios({ cdp, evaluate, frames, press, move, release, click, setTouch, baseURL }) {
+  const moduleURL = path => JSON.stringify(new URL(path, `${baseURL}/`).href);
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
   async function until(fn, description) {
     const deadline = Date.now() + 15000;
@@ -44,8 +45,8 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
   async function configure(kind) {
     await evaluate(`(async () => {
       const s=window.__scene;
-      const {createTrucoAI}=await import('/src/game/ai/BettingAI.js');
-      const {createCardAI}=await import('/src/game/ai/CardAI.js');
+      const {createTrucoAI}=await import(${moduleURL('src/game/ai/BettingAI.js')});
+      const {createCardAI}=await import(${moduleURL('src/game/ai/CardAI.js')});
       s.aiFactory=${kind === 'real' ? '() => createTrucoAI({rng:()=>0.5})' : kind === 'cards'
     ? '() => createCardAI({rng:()=>0.5})' : `() => ({chooseAction:view=>view.legalActions.find(a=>a.type==='counterRaise')??
         view.legalActions.find(a=>a.type==='acceptBet')??view.legalActions.find(a=>a.type==='playCard')})`};
@@ -54,6 +55,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     await frames();
   }
   async function screenshot(name) {
+    if (process.env.BROWSER_SCREENSHOTS === '0') return;
     const shot = await cdp('Page.captureScreenshot', { format: 'png' });
     await writeFile(`artifacts/truco-v0.3/${name}.png`, Buffer.from(shot.data, 'base64'));
   }
@@ -91,10 +93,10 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     await cdp('Page.navigate', { url: `${baseURL}/?mode=${mode.name}` });
     await until(() => evaluate("!!document.querySelector('canvas')"), 'menu canvas');
     await evaluate(`(async()=>{
-      const {default:Scene}=await import('/src/scenes/GameScene.js');
-      const {MatchController}=await import('/src/game/MatchController.js');
-      const {createCardAI}=await import('/src/game/ai/CardAI.js');
-      const {getCardStrength}=await import('/src/game/rules/CardStrength.js');
+      const {default:Scene}=await import(${moduleURL('src/scenes/GameScene.js')});
+      const {MatchController}=await import(${moduleURL('src/game/MatchController.js')});
+      const {createCardAI}=await import(${moduleURL('src/game/ai/CardAI.js')});
+      const {getCardStrength}=await import(${moduleURL('src/game/rules/CardStrength.js')});
       window.__strength=getCardStrength;
       Scene.prototype.matchFactory=()=>new MatchController({rng:()=>0});
       Scene.prototype.aiFactory=()=>createCardAI({rng:()=>0.5});

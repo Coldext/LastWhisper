@@ -97,6 +97,19 @@ npm run dev
 
 Abra o endereço local informado pelo Vite no terminal.
 
+O projeto usa o prefixo `/LastWhisper/` em desenvolvimento e no build para
+compatibilidade com GitHub Pages. A prévia local fica normalmente em
+`http://localhost:4173/LastWhisper/`.
+
+### Publicação automática
+
+O workflow de Pages valida dependências, testes e build em cada push para `main`
+e publica somente `dist`. Após integrar as configurações à `main`, ative
+**Settings → Pages → Build and deployment → Source → GitHub Actions**.
+O endereço esperado é <https://coldext.github.io/LastWhisper/>.
+Veja [ativação, revisão e validação do Pages](docs/github-pages.md) para as etapas
+completas. O commit de configuração não realiza merge nem publica por si só.
+
 ### Testes e build
 
 ```bash
