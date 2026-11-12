@@ -1,5 +1,7 @@
 # Motor de turnos e distribuição — v0.3.0, Pacote 2
 
+Atualizado pelo [Pacote 3 — resolução de vazas](trick-resolution-v0.3.md).
+
 `src/game/MatchController.js` usa `Deck` e consulta a manilha pelo CardStrength.
 É independente do Phaser e não altera `DemoGame`, a interface ou o Drag & Drop.
 
@@ -31,7 +33,7 @@ carta de outro jogador, zona/dono incorretos ou carta já utilizada. O registro
 da distribuição exige que a carta pertença à mão atual. Uma jogada move a mesma
 instância para `table`, preserva o dono e registra `{ playerId, instanceId }`.
 Após duas jogadas, a fase é `resolvingTrick`, sem jogador ativo; novas jogadas
-ficam bloqueadas. Nenhum vencedor é calculado neste pacote.
+ficam bloqueadas até `resolveTrick()` comparar as cartas e registrar o vencedor.
 
 Fases exportadas em `MATCH_PHASES`:
 
@@ -40,17 +42,16 @@ Fases exportadas em `MATCH_PHASES`:
 | `ready` | `startHand()` prepara a distribuição. |
 | `dealing` | `deal()` distribui e libera o primeiro jogador. |
 | `awaitingPlay` | `play()` passa a vez ou aguarda resolução após duas cartas. |
-| `resolvingTrick` | Fronteira para o futuro resolvedor de vazas. |
+| `resolvingTrick` | `resolveTrick()` registra a vaza e libera o vencedor ou encerra a mão. |
 | `handComplete` | `startHand()` permite preparar a próxima mão. |
 | `awaitingBetResponse` | Reservada; sem ações ou transições de aposta implementadas. |
 | `matchComplete` | Reservada; sem pontuação ou término de partida implementados. |
 
-`completeHand()` é uma fronteira de ciclo de vida para o futuro coordenador de
-regras, permitida somente em `resolvingTrick`. O chamador deve determinar quando
-a mão terminou; este método apenas marca `handComplete`, sem decidir vencedor,
-contar vazas ou conceder pontos. Os testes usam essa fronteira explicitamente
-para validar mãos sucessivas. Ainda não há continuação automática após uma vaza
-nem aplicação da regra de duas vitórias; isso pertence ao pacote de resolução.
+No Pacote 3, a antiga fronteira provisória `completeHand()` foi substituída por
+`resolveTrick()`. A mão encerra automaticamente quando um jogador conquista duas
+vazas; o chamador não pode encerrar antecipadamente. O vencedor de cada vaza
+inicia a seguinte. Não há pontuação de partida. Consulte a documentação do
+Pacote 3 para histórico, resultados e consistência de zonas.
 
 As transições de ciclo inválidas lançam erro sem alteração de estado. Consultas
 de mãos e jogadas retornam cópias dos arrays; registros de jogada são imutáveis.
@@ -66,4 +67,4 @@ anteriores à compra. Não existe corte, callback de corte ou operação equival
 Validação: `npm test` cobre ordem de compra, alternância, turnos, ações inválidas,
 repetições, fases, RNG, esgotamento e preservação de instâncias e metadados.
 `npm run build` valida a aplicação existente; o controlador ainda não é importado
-pelas cenas. Não há IA, apostas, resolução de vazas, pontuação ou interface nova.
+pelas cenas. Não há IA, apostas, pontuação de partida ou interface nova.

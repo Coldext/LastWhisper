@@ -20,10 +20,18 @@ function pendingResolution(match) {
   assert.equal(match.phase, MATCH_PHASES.RESOLVING_TRICK);
 }
 
+function finishHand(match) {
+  while (match.phase !== MATCH_PHASES.HAND_COMPLETE) {
+    if (match.phase === MATCH_PHASES.AWAITING_PLAY) pendingResolution(match);
+    match.resolveTrick();
+  }
+}
+
 function snapshot(match) {
   return JSON.stringify({
     phase: match.phase, handNumber: match.handNumber, first: match.firstPlayerId,
     active: match.activePlayerId, vira: match.vira, plays: match.plays, deck: match.deck,
+    tricks: match.tricks, handResults: match.handResults, trickWins: match.trickWins,
   });
 }
 
@@ -154,16 +162,16 @@ test('lifecycle guards reject invalid transitions and protect read-only state an
     assert.equal(snapshot(match), before);
   };
   reject(() => match.deal());
-  reject(() => match.completeHand());
+  reject(() => match.resolveTrick());
   assert.equal(match.play('player', match.deck.cards[0].instanceId), false);
   match.startHand();
   reject(() => match.startHand());
-  reject(() => match.completeHand());
+  reject(() => match.resolveTrick());
   assert.equal(match.play('player', match.deck.cards[0].instanceId), false);
   match.deal();
   reject(() => match.deal());
   reject(() => match.startHand());
-  reject(() => match.completeHand());
+  reject(() => match.resolveTrick());
   assert.throws(() => match.handOf('missing'), RangeError);
   for (const key of ['phase', 'activePlayerId', 'firstPlayerId', 'handNumber', 'vira', 'deck']) {
     assert.throws(() => { match[key] = 'changed'; }, TypeError);
@@ -176,10 +184,10 @@ test('lifecycle guards reject invalid transitions and protect read-only state an
   assert.throws(() => { plays[0].playerId = 'changed'; }, TypeError);
   plays.pop();
   assert.equal(match.plays.length, 2);
-  match.completeHand();
+  finishHand(match);
   assert.equal(match.phase, MATCH_PHASES.HAND_COMPLETE);
-  reject(() => match.completeHand());
-  assert.equal(match.play('player', match.handOf('player')[0].instanceId), false);
+  reject(() => match.resolveTrick());
+  assert.equal(match.play('player', match.deck.cards[0].instanceId), false);
   assert.ok(Object.isFrozen(MATCH_PHASES));
 });
 
@@ -195,7 +203,7 @@ test('successive hands alternate starter and deal order, retaining objects and m
     pendingResolution(match);
     assert.equal(match.deck.getCard(marked.instanceId), marked);
     for (let number = 2; number <= 4; number++) {
-      match.completeHand(); // Trusted future coordinator boundary; no scoring here.
+      finishHand(match);
       const oldCards = [...match.handOf('player'), ...match.handOf('opponent'),
         ...match.deck.cardsIn('table'), match.vira];
       const top = match.deck.drawPile.reverse();
@@ -234,7 +242,7 @@ test('RNG is injected, deterministic, validated and used only for the initial sh
       second.handOf(id).map(card => card.definitionId));
   }
   pendingResolution(first);
-  first.completeHand();
+  finishHand(first);
   first.startHand();
   first.deal();
   assert.equal(calls, 51);
@@ -260,7 +268,7 @@ test('exhaustion never replenishes or changes the previous hand, starter or meta
   const match = createDealt();
   for (let number = 1; number <= 7; number++) {
     pendingResolution(match);
-    match.completeHand();
+    finishHand(match);
     if (number < 7) {
       match.startHand();
       match.deal();
@@ -274,7 +282,7 @@ test('exhaustion never replenishes or changes the previous hand, starter or meta
   // Exhaustion after preparation must also fail before discarding the old hand.
   const prepared = createDealt();
   pendingResolution(prepared);
-  prepared.completeHand();
+  finishHand(prepared);
   prepared.startHand();
   prepared.deck.draw(39);
   const beforeDeal = snapshot(prepared);
