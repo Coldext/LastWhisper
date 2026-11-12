@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <code>v0.3.0 · Integração jogável · Pacote 8/9</code><br />
+  <code>v0.3.0 · Truco Jogável</code><br />
   <code>JavaScript</code> <code>Phaser 4</code> <code>Vite 8</code>
 </p>
 
@@ -15,7 +15,7 @@
 
 **A versão atual permite disputar partidas completas de Truco contra uma IA intermediária.** Distribuição, manilhas, vazas, apostas, blefes, placar até 12 e próximas mãos estão integrados à mesa Phaser. A visão roguelite continua em planejamento.
 
-[Sobre o jogo](#sobre-o-jogo) · [Estado atual](#estado-atual) · [Como executar](#como-executar) · [Controles](#controles) · [Roadmap](#roadmap) · [Capturas](#capturas-de-tela)
+[Sobre o jogo](#sobre-o-jogo) · [Regras](docs/rules-v0.3.md) · [Estado atual](#estado-atual) · [Como executar](#como-executar) · [Controles](#controles) · [Validação](docs/validation-v0.3.md) · [Roadmap](#roadmap) · [Capturas](#capturas-de-tela)
 
 ## Sobre o jogo
 
@@ -53,11 +53,11 @@ Cinco presenças orientam a direção artística planejada. São conceitos visua
 
 ## Estado atual
 
-**v0.3.0 — Truco jogável, integração do Pacote 8 de 9.**
+**v0.3.0 — Truco Jogável, nove pacotes concluídos e validados.**
 
 Implementado no código:
 
-- Menu principal e navegação para a mesa de demonstração.
+- Menu principal e navegação para a mesa de Truco.
 - Layout responsivo para desktop, portrait e landscape.
 - Drag & Drop com mouse e toque, retorno animado após soltura inválida e bloqueio de cartas já jogadas.
 - Posicionamento das jogadas dentro dos limites da mesa, preservado proporcionalmente após redimensionamento.
@@ -86,7 +86,7 @@ O baralho permanece compartilhado. Cartas da mão encerrada são descartadas; se
 - Node.js e npm. O Vite instalado declara suporte a Node `^20.19.0 || >=22.12.0`.
 - Navegador para abrir o jogo.
 
-O ambiente usado na validação da v0.2 tinha Node.js **26.13.0**. O teste opcional de navegador também usa a API nativa `WebSocket` do Node e foi validado nesse ambiente.
+A validação da v0.3.0 usou Node.js **26.13.0** e npm **11.20.0**, com Phaser **4.2.1** e Vite **8.3.7**. O teste de navegador requer `WebSocket` nativo do Node.
 
 Com uma cópia do projeto aberta no terminal:
 
@@ -110,7 +110,7 @@ npm run build
 npm run preview
 ```
 
-Na validação do Pacote 8, os **81 testes nativos** passaram, assim como o build de produção. O build emite o aviso existente de tamanho do bundle.
+Na validação final, os **82 testes nativos** passaram, assim como o build de produção. A matriz adicional executou **408 partidas com 68 sementes**, 2.102 mãos e 102 reembaralhamentos, sem travamentos ou duplicações. O build mantém o aviso de tamanho do bundle.
 
 Para a regressão opcional com navegador:
 
@@ -120,7 +120,9 @@ npm run test:browser
 
 O script inicia seu próprio servidor Vite e usa Edge em modo headless. O caminho padrão é o executável do Edge no Windows; para outro Chromium compatível, defina `BROWSER_PATH`. Cobre mouse, toque emulado em portrait/landscape, arrastos, rotação, apostas, transições, telas finais, reinício e menu. As capturas atuais ficam em `artifacts/truco-v0.3/`.
 
-A regressão passou nos três modos na validação da v0.2. Toque emulado não substitui a verificação em celulares físicos, que permanece pendente.
+A regressão passou em desktop e em ambos os sentidos dos pares **320×568**, **375×667**, **390×844** e **768×1024**: nove viewports, com mouse, toque emulado, rotação e safe areas simuladas. Textos e controles de 320 px foram corrigidos e verificados. No sandbox da validação, foi necessário executar o navegador fora do isolamento para o DevTools responder.
+
+Toque emulado não substitui a verificação em celulares físicos. Safari e Firefox também permanecem sem validação. A IA não foi calibrada com jogadores humanos; as simulações medem consistência. Detalhes, evidências e commits estão no [relatório final](docs/validation-v0.3.md).
 
 ## Controles
 
@@ -159,14 +161,14 @@ Capturas reais da integração Phaser, produzidas pelo script de regressão. As 
 
 ## Roadmap
 
-Etapas organizadas a partir da visão do projeto e do estado da v0.2, sem datas de lançamento definidas.
+Etapas organizadas a partir da visão do projeto e do estado da v0.3.0, sem datas para funcionalidades futuras.
 
 | Fase | Escopo | Situação |
 | --- | --- | --- |
 | **1 · Fundação** | Phaser, estrutura do projeto, interface básica e responsividade. | Base implementada. |
-| **2 · Truco básico** | Baralho, distribuição, vira, manilhas, turnos, vazas, apostas e IA. | Integrado à interface; Pacote 8/9 da v0.3.0. |
+| **2 · Truco básico** | Baralho, distribuição, vira, manilhas, turnos, vazas, apostas e IA. | Concluído e validado na v0.3.0. |
 | **3 · Combate** | HP, dano, escudo e condições de vitória. | Planejado. |
-| **4 · Tokens e blefe** | Consumíveis, uso estratégico e informações ocultas. | Planejado; interface demonstrativa disponível. |
+| **4 · Tokens e blefe** | Consumíveis, uso estratégico e informações ocultas. | Tokens planejados; blefes de aposta já disponíveis na IA. |
 | **5 · Encantamentos e loja** | Efeitos nas cartas, economia e construção de estratégias. | Estrutura de dados disponível; efeitos e loja pendentes. |
 | **6 · Roguelite** | Expedições, adversários, recompensas e progressão. | Planejado. |
 | **7 · Polimento e publicação** | Arte final, efeitos, áudio, otimizações e lançamento web. | Planejado; direção visual inicial disponível. |
@@ -189,7 +191,7 @@ Georgia orienta a tipografia dos títulos no jogo; Arial é usada nos textos de 
 
 | Tecnologia | Uso no projeto |
 | --- | --- |
-| **JavaScript com módulos ES** | Modelos de cartas, baralho e integração da demonstração. |
+| **JavaScript com módulos ES** | Motor de regras, cartas, baralho, IA e apresentação. |
 | **Phaser 4.2.1** | Cenas, renderização, entrada e animações. |
 | **Vite 8** | Servidor de desenvolvimento e build de produção. |
 | **HTML5 e CSS** | Página hospedeira, canvas e adaptação do espaço de jogo. |
@@ -200,15 +202,18 @@ src/
   game/
     cards/       # Definições, instâncias e dados de modificadores
     deck/        # Monte compartilhado e transições de zona
-    DemoGame.js  # Distribuição e ciclo da demonstração
+    rules/       # CardStrength puro
+    ai/          # Observação autorizada, cartas e apostas
+    MatchController.js # Partida, resultados e placar
+    DemoGame.js  # Demonstração legada, fora da cena jogável
   logic/         # Estados de interação das cartas
   scenes/        # Menu principal e mesa de jogo
   theme/         # Paleta e tipografia
-  ui/            # Componentes visuais e apresentação das cartas
+  ui/            # Coordenador visual, mesa e cartas
 tests/           # Testes de lógica e handlers
 scripts/         # Regressão opcional no navegador
 docs/            # Documentação técnica e assets do README
-artifacts/       # Capturas reais da demonstração
+artifacts/       # Capturas da v0.2 e da v0.3
 ```
 
 A lógica das cartas e do baralho funciona sem importar Phaser. A definição original, a instância física, sua localização e sua apresentação têm responsabilidades separadas. Para os detalhes de identidade, zonas, metadados e APIs, consulte [Cartas e monte compartilhado — v0.2](docs/cards-v0.2.md).

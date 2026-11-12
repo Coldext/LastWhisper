@@ -18,13 +18,19 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
       cards:[...s.cardObjects].map(([id,c])=>({id,...point(c.x,c.y),enabled:!!c.input?.enabled,
         bottom:point(c.x,c.y+c.height/2).y,strength:window.__strength(m.deck.getCard(id),m.vira)})),
       table:m.deck.cardsIn('table').map(c=>c.instanceId),
-      controls:Object.fromEntries([...s.controls].map(([id,c])=>[id,{...point(c.x,c.y),top:point(c.x,c.y-c.height/2).y,enabled:!!c.input?.enabled}])),
+      controls:Object.fromEntries([...s.controls].map(([id,c])=>[id,{...point(c.x,c.y),top:point(c.x,c.y-c.height/2).y,
+        enabled:!!c.input?.enabled,width:c.width,labelWidth:c.getData('label').width}])),
       hidden:s.children.list.filter(c=>c.type==='Container'&&!c.getData('instanceId')).length,
       enemyCount:m.handOf('opponent').length, listeners:s.input.listenerCount('dragstart'),
       labels:s.children.list.filter(c=>typeof c.text==='string').map(c=>c.text),
       canvas:{left:canvas.left,top:canvas.top,right:canvas.right,bottom:canvas.bottom},
       viewport:{width:innerWidth,height:innerHeight}};
   })()`);
+  function assertButtonLabels(state) {
+    for (const [id, control] of Object.entries(state.controls)) {
+      assert.ok(control.labelWidth <= control.width - 16, `button label must fit: ${id}`);
+    }
+  }
   async function control(id) {
     const item = await until(async () => { const s = await snapshot(); return s.controls[id]?.enabled && s.controls[id]; }, `control ${id}`);
     await click(item.x, item.y);
@@ -70,8 +76,14 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
   await mkdir('artifacts/truco-v0.3', { recursive: true });
   for (const mode of [
     { name: 'desktop', width: 1100, height: 760, touch: false },
+    { name: 'portrait-320-touch', width: 320, height: 568, touch: true },
+    { name: 'landscape-320-touch', width: 568, height: 320, touch: true },
+    { name: 'portrait-375-touch', width: 375, height: 667, touch: true },
+    { name: 'landscape-375-touch', width: 667, height: 375, touch: true },
     { name: 'portrait-touch', width: 390, height: 844, touch: true },
     { name: 'landscape-touch', width: 844, height: 390, touch: true },
+    { name: 'portrait-768-touch', width: 768, height: 1024, touch: true },
+    { name: 'landscape-768-touch', width: 1024, height: 768, touch: true },
   ]) {
     setTouch(mode.touch);
     await cdp('Emulation.setTouchEmulationEnabled', { enabled: mode.touch, maxTouchPoints: 5 });
@@ -96,6 +108,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     assert.equal(state.remaining, 45);
     assert.equal(state.cards.length, 3);
     assert.equal(state.hidden, 3);
+    assertButtonLabels(state);
     assert.ok(state.cards.every(card => card.bottom <= state.controls.raise.top - 1), 'hand stays above action bar');
     const firstId = state.cards[0].id;
     for (let i = 0; i < 3; i++) {
@@ -144,6 +157,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     await until(async () => (await snapshot()).pending?.responderId === 'player', 'counter-offer modal');
     state = await snapshot();
     assert.equal(state.pending.value, 6);
+    assertButtonLabels(state);
     for (const id of ['acceptBet', 'fold', 'counterRaise']) assert.ok(state.controls[id]?.enabled);
     assert.ok(state.cards.every(card => !card.enabled));
     // Modal remains functional after resizing, including touch hit boxes.
@@ -181,10 +195,11 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     state = await snapshot();
     assert.equal(state.controls.counterRaise, undefined);
     await control('acceptBet');
-    const final = await playToEnd(mode.name === 'portrait-touch');
+    const final = await playToEnd(mode.height > mode.width);
     assert.ok(final.score[final.winner] >= 12);
     assert.ok(final.controls.playAgain.enabled && final.controls.finalMenu.enabled);
-    assert.ok(final.labels.includes(mode.name === 'portrait-touch' ? 'DERROTA' : 'VITÓRIA'));
+    assertButtonLabels(final);
+    assert.ok(final.labels.includes(mode.height > mode.width ? 'DERROTA' : 'VITÓRIA'));
     await screenshot(`${mode.name}-final`);
     await control('playAgain');
     assert.equal((await snapshot()).hand, 1);

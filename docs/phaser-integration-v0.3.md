@@ -1,5 +1,8 @@
 # Truco jogável no Phaser — v0.3.0, Pacote 8
 
+O [relatório final do Pacote 9](validation-v0.3.md) amplia a matriz para nove
+viewports, registra 82 testes e documenta as correções de textos em 320 px.
+
 `GameScene` agora cria `MatchController` e `createTrucoAI`. `Deck`, CardStrength,
 turnos, pontuação, apostas e a memória autorizada da IA continuam nos módulos do
 motor, sem dependência de Phaser. `DemoGame` permanece como infraestrutura da

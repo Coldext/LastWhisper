@@ -19,9 +19,9 @@ function control(scene, id, options, callback) {
 
 function overlay(scene, { title, detail, actions = [] }) {
   const w = scene.scale.width, h = scene.scale.height;
-  const shade = scene.add.zone(w / 2, (h + 58) / 2, w, h - 58).setInteractive();
+  const shade = scene.add.zone(w / 2, (h + 64) / 2, w, h - 64).setInteractive();
   shade.setData('modalBlocker', true);
-  rect(scene, 0, 58, w, h - 58, THEME.obsidian, null, 0, 0.88);
+  rect(scene, 0, 64, w, h - 64, THEME.obsidian, null, 0, 0.88);
   const width = Math.min(520, w - 28), height = Math.min(230, h - 72);
   const top = (h - height) / 2;
   rect(scene, (w - width) / 2, top, width, height, THEME.panel, THEME.bronze, 10);
@@ -45,7 +45,8 @@ export function renderGameTable(scene) {
   control(scene, 'menu', { x: 48, y: 25, w: 88, h: 40, title: '‹ MENU', fontSize: 11 }, () => scene.returnToMenu());
   control(scene, 'restart', { x: w - 62, y: 25, w: 112, h: 40, title: 'REINICIAR', fontSize: 10 }, () => scene.restartMatch());
   label(scene, cx, 21, 'O ERRANTE', Math.min(20, w * 0.038), THEME.ivory, { serif: true, bold: true });
-  label(scene, cx, 48, `VOCÊ ${view.score.player}  ·  ${view.score.opponent} ERRANTE`, compact ? 12 : 15, THEME.paper);
+  label(scene, cx, !compact && w < 400 ? 54 : 48,
+    `VOCÊ ${view.score.player}  ·  ${view.score.opponent} ERRANTE`, compact ? 12 : 15, THEME.paper);
   scene.enemyY = compact ? h * 0.235 : h * 0.185;
   const enemyWidth = compact ? 25 : Math.min(42, w * 0.1);
   for (let i = 0; i < view.opponentCardCount; i++) {

@@ -29,7 +29,9 @@ export function button(scene, { x, y, w, h, title, primary = false, onClick, fon
   const border = primary ? 0xc66d6b : THEME.bronze;
   const bg = rect(scene, x - w / 2, y - h / 2, w, h, fill, border, 5);
   const txt = label(scene, x, y, title, fontSize, THEME.ivory, { bold: true });
+  if (txt.width > w - 20) txt.setFontSize(Math.max(9, fontSize * (w - 20) / txt.width));
   const hit = scene.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+  hit.setData('label', txt);
   // Feedback também funciona com toque (sem depender de hover).
   hit.on('pointerdown', () => { bg.setAlpha(0.75); txt.setAlpha(0.75); });
   hit.on('pointerup', () => { bg.setAlpha(1); txt.setAlpha(1); });
