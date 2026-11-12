@@ -237,8 +237,7 @@ test('history is immutable, serializable and survives next-hand discard with met
   assert.equal(match.handResults.length, 1);
   const oldCards = [...match.handOf('player'), ...match.handOf('opponent'),
     ...match.deck.cardsIn('table'), match.vira];
-  match.startHand();
-  match.deal();
+  match.acknowledgeHandResult(match.handNumber);
   assert.equal(match.firstPlayerId, 'opponent');
   assert.equal(match.activePlayerId, 'opponent');
   assert.deepEqual(match.tricks, []);

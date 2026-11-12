@@ -197,22 +197,21 @@ test('parameters and RNG are validated, detached from callers and reproducible',
 
 test('seeded matches to 12 finish with legal betting, consistent zones and repeatable results', () => {
   function simulate(seed, firstPlayerId) {
-    const score = { player: 0, opponent: 0 };
     const bots = {
       player: createTrucoAI({ rng: seeded(seed + 1000) }),
       opponent: createTrucoAI({ rng: seeded(seed + 2000) }),
     };
     const trace = [];
-    let match = dealt(seed, firstPlayerId);
+    const match = dealt(seed, firstPlayerId);
     let hands = 0;
-    while (Math.max(...Object.values(score)) < 12) {
+    while (match.phase !== MATCH_PHASES.MATCH_COMPLETE) {
       let actions = 0;
       const identities = match.deck.cards;
-      while (match.phase !== MATCH_PHASES.HAND_COMPLETE) {
+      while (![MATCH_PHASES.HAND_COMPLETE, MATCH_PHASES.MATCH_COMPLETE].includes(match.phase)) {
         if (match.phase === MATCH_PHASES.RESOLVING_TRICK) match.resolveTrick();
         else {
           const playerId = match.pendingBet?.responderId ?? match.activePlayerId;
-          const observation = createMatchObservation(match, playerId, { score });
+          const observation = createMatchObservation(match, playerId);
           const before = JSON.stringify({ deck: match.deck, bets: match.bettingHistory });
           const action = bots[playerId].chooseAction(observation);
           assert.ok(observation.legalActions.includes(action));
@@ -223,8 +222,7 @@ test('seeded matches to 12 finish with legal betting, consistent zones and repea
           assert.ok(++actions <= 24); // Six cards plus a bounded four-step negotiation.
         }
       }
-      assert.equal(bots.player.chooseAction(createMatchObservation(match, 'player', { score })), null);
-      score[match.handWinnerId] += match.handResult.points;
+      assert.equal(bots.player.chooseAction(createMatchObservation(match, 'player')), null);
       trace.push({ winner: match.handWinnerId, points: match.handResult.points, reason: match.handResult.reason });
       assert.deepEqual(match.deck.cards, identities);
       const all = ZONES.flatMap(zone => match.deck.cardsIn(zone));
@@ -232,17 +230,9 @@ test('seeded matches to 12 finish with legal betting, consistent zones and repea
       assert.equal(new Set(all.map(card => card.instanceId)).size, 52);
       assert.deepEqual(new Set(match.deck.drawPile), new Set(match.deck.cardsIn('deck')));
       assert.ok(++hands <= 23);
-      if (Math.max(...Object.values(score)) < 12) {
-        if (match.deck.remaining >= 7) { match.startHand(); match.deal(); }
-        else {
-          // Test harness supplies a fresh fixture at exhaustion. Production
-          // reshuffling/match lifecycle remains outside this package.
-          const starter = match.firstPlayerId === 'player' ? 'opponent' : 'player';
-          match = dealt(seed + hands * 100, starter);
-        }
-      }
+      if (match.phase !== MATCH_PHASES.MATCH_COMPLETE) match.acknowledgeHandResult(match.handNumber);
     }
-    return { score, trace };
+    return { score: match.score, trace };
   }
   const actionTypes = new Set();
   for (const starter of PLAYER_IDS) {

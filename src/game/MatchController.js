@@ -3,6 +3,7 @@ import { compareCards, getManilhaRank } from './rules/CardStrength.js';
 
 export const PLAYER_IDS = Object.freeze(['player', 'opponent']);
 export const BET_VALUES = Object.freeze([1, 3, 6, 9, 12]);
+export const MATCH_TARGET = 12;
 export const MATCH_PHASES = Object.freeze({
   READY: 'ready',
   DEALING: 'dealing',
@@ -10,7 +11,7 @@ export const MATCH_PHASES = Object.freeze({
   RESOLVING_TRICK: 'resolvingTrick',
   AWAITING_BET_RESPONSE: 'awaitingBetResponse',
   HAND_COMPLETE: 'handComplete',
-  MATCH_COMPLETE: 'matchComplete', // Reserved for the scoring package.
+  MATCH_COMPLETE: 'matchComplete',
 });
 const handZones = Object.freeze({ player: 'playerHand', opponent: 'opponentHand' });
 
@@ -28,7 +29,7 @@ function nextBet(value) {
   return BET_VALUES[BET_VALUES.indexOf(value) + 1] ?? null;
 }
 
-// Authoritative logical state only. No rendering or match scoring.
+// Authoritative logical state only. Presentation acknowledges results explicitly.
 export class MatchController {
   #deck;
   #phase = MATCH_PHASES.READY;
@@ -47,6 +48,11 @@ export class MatchController {
   #resumePlayerId = null;
   #lastProposerId = null;
   #bettingHistory = [];
+  #rng;
+  #score = Object.freeze({ player: 0, opponent: 0 });
+  #matchResult = null;
+  #events = [];
+  #deckEpoch = 0;
 
   constructor({ rng = Math.random, firstPlayerId = 'player', deck = new Deck() } = {}) {
     validatePlayer(firstPlayerId);
@@ -57,6 +63,7 @@ export class MatchController {
     }
     deck.shuffle(rng);
     this.#deck = deck;
+    this.#rng = rng;
     this.#initialFirstPlayerId = firstPlayerId;
   }
 
@@ -76,6 +83,20 @@ export class MatchController {
   get lastProposerId() { return this.#lastProposerId; }
   get nextRaiseValue() { return nextBet(this.#pendingBet?.value ?? this.#acceptedBet); }
   get bettingHistory() { return [...this.#bettingHistory]; }
+  get score() { return this.#score; }
+  get matchResult() { return this.#matchResult; }
+  get matchWinnerId() { return this.#matchResult?.winnerId ?? null; }
+  get events() { return [...this.#events]; }
+  get deckEpoch() { return this.#deckEpoch; }
+  eventsSince(sequence = 0) {
+    if (!Number.isInteger(sequence) || sequence < 0) throw new RangeError('Invalid event sequence');
+    return this.#events.filter(event => event.sequence > sequence);
+  }
+
+  #emit(type, details = {}) {
+    this.#events.push(Object.freeze({ sequence: this.#events.length + 1,
+      type, handNumber: this.#handNumber, ...details }));
+  }
   get handResult() {
     const last = this.#handResults.at(-1);
     return last?.handNumber === this.#handNumber ? last : null;
@@ -97,23 +118,78 @@ export class MatchController {
   }
 
   #requireCards() {
-    if (this.#deck.remaining < 7) throw new RangeError('Not enough cards for a new hand');
+    if (this.#deck.remaining + this.#deck.cardsIn('discard').length + this.#retiringCards().length < 7) {
+      throw new RangeError('Not enough eligible cards for a new hand');
+    }
+  }
+
+  #retiringCards() {
+    if (this.#handNumber === 0) return [];
+    return [...this.#dealtTo].map(([id, ownerId]) => {
+      const card = this.#deck.getCard(id);
+      if (!((card.runtime.zone === handZones[ownerId] || card.runtime.zone === 'table') &&
+          card.runtime.ownerId === ownerId) && card.runtime.zone !== 'discard') {
+        throw new Error('Inconsistent completed hand card locations');
+      }
+      return card;
+    }).concat(this.#vira).filter(card => {
+      if (card === this.#vira && (!['vira', 'discard'].includes(card.runtime.zone) || card.runtime.ownerId !== null)) {
+        throw new Error('Inconsistent completed vira location');
+      }
+      return card.runtime.zone !== 'discard';
+    });
+  }
+
+  #planDeal() {
+    this.#requireCards();
+    const retiring = this.#retiringCards();
+    let randomValues = null;
+    if (this.#deck.remaining < 7) {
+      const count = this.#deck.remaining + this.#deck.cardsIn('discard').length + retiring.length;
+      randomValues = [];
+      // Validate the complete shuffle before discarding anything. Replay these
+      // values through Deck's atomic shuffle so a bad RNG leaves the hand intact.
+      for (let i = count - 1; i > 0; i--) {
+        const value = this.#rng();
+        if (!Number.isFinite(value) || value < 0 || value >= 1) throw new RangeError('Invalid shuffle RNG');
+        randomValues.push(value);
+      }
+    }
+    return { retiring, randomValues };
   }
 
   // Preparation boundary remains separate from dealing for future pre-deal rules.
   startHand() {
-    this.#requirePhase(MATCH_PHASES.READY, MATCH_PHASES.HAND_COMPLETE);
+    this.#requirePhase(MATCH_PHASES.READY);
     this.#requireCards();
     this.#phase = MATCH_PHASES.DEALING;
+    this.#emit('distributionStarted', { nextHandNumber: this.#handNumber + 1 });
   }
 
   deal() {
     this.#requirePhase(MATCH_PHASES.DEALING);
-    this.#requireCards(); // Check again before collecting or drawing anything.
-    for (const card of this.#deck.cards) {
-      if (['playerHand', 'opponentHand', 'table', 'vira'].includes(card.runtime.zone)) {
-        this.#deck.move(card.instanceId, { from: card.runtime.zone, to: 'discard' });
-      }
+    this.#dealPrepared(this.#planDeal());
+  }
+
+  acknowledgeHandResult(handNumber) {
+    if (this.#phase !== MATCH_PHASES.HAND_COMPLETE || handNumber !== this.#handNumber) return false;
+    const plan = this.#planDeal();
+    this.#phase = MATCH_PHASES.DEALING;
+    this.#emit('distributionStarted', { nextHandNumber: this.#handNumber + 1 });
+    this.#dealPrepared(plan);
+    return true;
+  }
+
+  #dealPrepared({ retiring, randomValues }) {
+    for (const card of retiring) {
+      this.#deck.move(card.instanceId, { from: card.runtime.zone, to: 'discard' });
+    }
+    if (retiring.length) this.#emit('discardCollected', { count: retiring.length });
+    if (randomValues !== null) {
+      let index = 0;
+      const count = this.#deck.collectAndShuffle({ zones: ['discard'], rng: () => randomValues[index++] });
+      this.#deckEpoch++;
+      this.#emit('deckReshuffled', { count, deckEpoch: this.#deckEpoch });
     }
     const first = this.#handNumber % 2 === 0
       ? this.#initialFirstPlayerId : PLAYER_IDS.find(id => id !== this.#initialFirstPlayerId);
@@ -138,6 +214,7 @@ export class MatchController {
     this.#firstPlayerId = first;
     this.#activePlayerId = first;
     this.#phase = MATCH_PHASES.AWAITING_PLAY;
+    this.#emit('handStarted', { firstPlayerId: first, deckEpoch: this.#deckEpoch });
   }
 
   canPlay(playerId, instanceId) {
@@ -234,6 +311,7 @@ export class MatchController {
   }
 
   #finishHand(winnerId, reason, foldedBy = null) {
+    this.#score = Object.freeze({ ...this.#score, [winnerId]: this.#score[winnerId] + this.#acceptedBet });
     this.#handResults.push(Object.freeze({
       handNumber: this.#handNumber, winnerId, reason, foldedBy,
       acceptedValue: this.#acceptedBet, points: this.#acceptedBet,
@@ -243,11 +321,18 @@ export class MatchController {
       }))),
       trickWins: this.trickWins, tricks: Object.freeze([...this.#tricks]),
       bettingHistory: Object.freeze([...this.#bettingHistory]),
+      score: this.#score, deckEpoch: this.#deckEpoch,
     }));
     this.#pendingBet = null;
     this.#resumePlayerId = null;
     this.#activePlayerId = null;
     this.#phase = MATCH_PHASES.HAND_COMPLETE;
+    this.#emit('handCompleted', { result: this.handResult, score: this.#score });
+    if (this.#score[winnerId] >= MATCH_TARGET) {
+      this.#matchResult = Object.freeze({ winnerId, score: this.#score, handNumber: this.#handNumber });
+      this.#phase = MATCH_PHASES.MATCH_COMPLETE;
+      this.#emit('matchCompleted', { result: this.#matchResult });
+    }
   }
 
   // Explicit boundary lets a future presenter display both cards before resolving.
@@ -274,6 +359,7 @@ export class MatchController {
     });
     this.#tricks.push(result);
     this.#plays = [];
+    this.#emit('trickResolved', { result });
     if (this.trickWins[winnerId] === 2) {
       this.#finishHand(winnerId, 'tricks');
     } else {

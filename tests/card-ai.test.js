@@ -56,7 +56,7 @@ test('observation contains only authorized detached data and never inspects hidd
   const observation = createMatchObservation(adapter, 'opponent');
   assert.deepEqual(observation.ownHand.map(card => card.definitionId), match.handOf('opponent').map(card => card.definitionId));
   assert.equal(observation.opponentCardCount, 3);
-  assert.equal(observation.score, null);
+  assert.deepEqual(observation.score, { player: 0, opponent: 0 });
   const json = JSON.stringify(observation);
   for (const card of hidden) {
     assert.equal(json.includes(card.instanceId), false);
@@ -73,18 +73,18 @@ test('observation contains only authorized detached data and never inspects hidd
   assert.deepEqual(observation.legalActions, []); // Not this observer's turn.
 });
 
-test('observation reveals only played faces, public history and explicitly supplied public score', () => {
+test('observation reveals only played faces, public history and authoritative public score', () => {
   const match = dealt();
   const lead = match.handOf('player')[0];
   match.play('player', lead.instanceId);
-  const points = { player: 5, opponent: 3, secret: match.handOf('player')[0] };
+  const points = { player: 0, opponent: 0, secret: match.handOf('player')[0] };
   const observation = createMatchObservation(match, 'opponent', { score: points });
   assert.equal(observation.plays[0].instanceId, lead.instanceId);
   assert.ok(observation.revealedCards.some(card => card.instanceId === lead.instanceId));
   assert.equal(observation.opponentCardCount, 2);
   assert.equal(observation.legalActions.filter(action => action.type === 'playCard').length, 3);
   assert.ok(observation.legalActions.some(action => action.type === 'requestRaise'));
-  assert.deepEqual(observation.score, { player: 5, opponent: 3 });
+  assert.deepEqual(observation.score, { player: 0, opponent: 0 });
   assert.notEqual(observation.score, points);
   assert.throws(() => { observation.score.player = 10; }, TypeError);
   while (match.phase !== MATCH_PHASES.HAND_COMPLETE) {
@@ -99,8 +99,7 @@ test('observation reveals only played faces, public history and explicitly suppl
   assert.deepEqual(completed.handResults, match.handResults);
   const publicIds = new Set([match.vira.instanceId, ...match.tricks.flatMap(trick => trick.plays.map(card => card.instanceId))]);
   assert.deepEqual(new Set(completed.revealedCards.map(card => card.instanceId)), publicIds);
-  match.startHand();
-  match.deal();
+  match.acknowledgeHandResult(match.handNumber);
   const next = createMatchObservation(match, 'opponent');
   for (const id of publicIds) assert.ok(next.revealedCards.some(card => card.instanceId === id));
   assert.equal(JSON.stringify(observation.plays[0]).includes(lead.instanceId), true);
@@ -242,7 +241,7 @@ test('seeded simulations finish complete hands with legal actions, private views
       assert.deepEqual(match.deck.cards, identities);
       assert.equal(new Set(match.deck.cards.map(card => card.instanceId)).size, 52);
       trace.push(publicOnly(match.handResult));
-      if (hand < 7) { match.startHand(); match.deal(); }
+      if (hand < 7) match.acknowledgeHandResult(match.handNumber);
     }
     assert.equal(match.deck.remaining, 3);
     return trace;

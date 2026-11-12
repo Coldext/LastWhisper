@@ -11,7 +11,7 @@ const ai = createTrucoAI({
   rng: Math.random,
   parameters: { bluffProbability: 0.08, bluffMaxValue: 6 },
 });
-const view = createMatchObservation(match, 'opponent', { score: publicScore });
+const view = createMatchObservation(match, 'opponent');
 const action = ai.chooseAction(view);
 // O coordenador aplica somente a ação escolhida ao motor:
 if (action?.type === 'playCard') match.play(action.playerId, action.instanceId);
@@ -21,9 +21,9 @@ else if (action?.type === 'acceptBet') match.acceptBet(action.playerId);
 else if (action?.type === 'fold') match.fold(action.playerId);
 ```
 
-O exemplo espera um placar público fornecido pelo coordenador. Sem placar,
-omitir o terceiro argumento do adaptador; `score` continuará `null` e a política
-usará um contexto neutro. Não foi implementado placar acumulado neste pacote.
+Desde o [Pacote 7](match-cycle-v0.3.md), o adaptador fornece o placar oficial do
+controlador. A política também aceita observações isoladas sem placar para
+testes ou futuros adaptadores e, nesse caso, usa um contexto neutro.
 
 O adaptador inclui em `legalActions` todas as ações permitidas pelo motor para
 o observador, em objetos imutáveis:
@@ -99,9 +99,8 @@ inválidos. As 40 combinações de semente/iniciador são simuladas duas vezes:
 80 partidas até 12 pontos, com todas as cinco ações exercitadas e resultados
 reproduzíveis.
 
-O placar e o encerramento aos 12 nas simulações pertencem ao teste. Ele usa o
-mesmo Deck por até sete mãos e fornece outra fixture se o monte se esgotar;
-isso não implementa reembaralhamento ou ciclo de partida em produção.
+Desde o Pacote 7, as simulações usam placar, encerramento aos 12 e reciclagem
+reais do controlador. Confirmam a apresentação entre mãos sem substituir o Deck.
 As simulações verificam consistência, não uma taxa de vitória ou calibração
 estatística de dificuldade.
 

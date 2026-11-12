@@ -69,15 +69,17 @@ O resultado da mão agora inclui `reason` (`tricks` ou `fold`), `foldedBy`,
 `acceptedValue`, `points`, `vira`, `plays` e `bettingHistory`, além dos campos
 anteriores. Por duas vitórias, o vencedor recebe o valor aceito. Por recusa,
 o proponente recebe esse mesmo valor, nunca o valor da proposta recusada.
-`points` representa os pontos concedidos ao vencedor **nesta mão**; não há ainda
-placar acumulado, término de partida aos 12 ou regra especial de mão de 11.
+`points` representa os pontos concedidos ao vencedor **nesta mão**. O
+[Pacote 7](match-cycle-v0.3.md) aplica esses pontos ao placar e encerra a partida
+aos 12 ou mais, sem regra especial de mão de 11.
 
 Uma mão recusada termina imediatamente, mesmo sem vazas resolvidas ou durante
 uma vaza incompleta. A vaza incompleta não ganha vencedor. A vira e as cartas
 já reveladas permanecem registradas no resultado; cartas ocultas não aparecem.
-Cartas e metadados ficam nas zonas atuais até a próxima distribuição recolhê-los.
+Cartas e metadados ficam nas zonas atuais até confirmar a apresentação do resultado.
 A distribuição seguinte reinicia a aposta em 1 e preserva o histórico da mão
-anterior. Falha por monte insuficiente não apaga o resultado nem as apostas.
+anterior. Monte insuficiente recicla somente descarte elegível; falhas de
+preparação não apagam o resultado nem as apostas.
 
 O adaptador `createMatchObservation` copia o estado público em `betting` e os
 novos campos dos resultados, sem expor dados privados. A IA de cartas não recebe

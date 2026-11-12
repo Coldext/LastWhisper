@@ -35,7 +35,7 @@ function playOne(match) {
 }
 
 function finish(match) {
-  while (match.phase !== MATCH_PHASES.HAND_COMPLETE) {
+  while (![MATCH_PHASES.HAND_COMPLETE, MATCH_PHASES.MATCH_COMPLETE].includes(match.phase)) {
     if (match.phase === MATCH_PHASES.RESOLVING_TRICK) match.resolveTrick();
     else playOne(match);
   }
@@ -313,8 +313,7 @@ test('betting results and observations are immutable, public and survive hands f
   const completed = createMatchObservation(match, 'opponent');
   assert.deepEqual(completed.handResults, match.handResults);
   const saved = JSON.stringify(result);
-  match.startHand();
-  match.deal();
+  match.acknowledgeHandResult(match.handNumber);
   assert.equal(match.acceptedBet, 1);
   assert.equal(match.pendingBet, null);
   assert.equal(match.resumePlayerId, null);
@@ -336,8 +335,7 @@ test('an initial refused truco still preserves its vira in later public observat
   match.requestRaise('player');
   match.fold('opponent');
   assert.deepEqual(match.handResult.plays, []);
-  match.startHand();
-  match.deal();
+  match.acknowledgeHandResult(match.handNumber);
   const view = createMatchObservation(match, 'opponent');
   assert.ok(view.revealedCards.some(card => card.instanceId === vira.instanceId));
   assert.equal(view.handResults[0].points, 1);

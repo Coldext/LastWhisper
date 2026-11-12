@@ -3,6 +3,8 @@
 Atualizado pelo [Pacote 3 — resolução de vazas](trick-resolution-v0.3.md).
 As janelas de aumento e o encerramento por recusa estão no
 [Pacote 5 — sistema de apostas](betting-v0.3.md).
+O [Pacote 7 — ciclo de partida](match-cycle-v0.3.md) acrescenta placar,
+confirmação da apresentação e reciclagem do descarte.
 
 `src/game/MatchController.js` usa `Deck` e consulta a manilha pelo CardStrength.
 É independente do Phaser e não altera `DemoGame`, a interface ou o Drag & Drop.
@@ -25,9 +27,9 @@ usa `firstPlayerId`; cada distribuição concluída alterna o primeiro da próxi
 `getManilhaRank(vira)`; antes da primeira distribuição retorna `null`.
 
 O construtor embaralha uma vez com RNG injetável. Aceita opcionalmente um `Deck`
-sem mão ativa, preservando suas instâncias e metadados. Não reembaralha entre
-mãos nem repõe cartas automaticamente. Falta de sete cartas aborta antes de
-descartar a mão anterior ou mudar o primeiro jogador.
+sem mão ativa, preservando suas instâncias e metadados. A partir do Pacote 7,
+recicla somente o descarte quando o monte não permite a próxima distribuição.
+Isso acontece após confirmar a apresentação, nunca durante uma mão ativa.
 
 `canPlay(playerId, instanceId)` e `play(...)` retornam `false` para ações
 inválidas, sem mutação: fase incorreta, jogador fora do turno, ID desconhecido,
@@ -41,18 +43,18 @@ Fases exportadas em `MATCH_PHASES`:
 
 | Fase | Transição disponível neste pacote |
 | --- | --- |
-| `ready` | `startHand()` prepara a distribuição. |
+| `ready` | `startHand()` prepara somente a primeira distribuição. |
 | `dealing` | `deal()` distribui e libera o primeiro jogador. |
 | `awaitingPlay` | `play()` passa a vez ou aguarda resolução após duas cartas. |
 | `resolvingTrick` | `resolveTrick()` registra a vaza e libera o vencedor ou encerra a mão. |
-| `handComplete` | `startHand()` permite preparar a próxima mão. |
+| `handComplete` | `acknowledgeHandResult(handNumber)` confirma apresentação e distribui a próxima. |
 | `awaitingBetResponse` | Destinatário pode aceitar, correr ou contra-apostar. |
-| `matchComplete` | Reservada; sem pontuação ou término de partida implementados. |
+| `matchComplete` | Partida encerrada aos 12 ou mais pontos; nenhuma nova mão. |
 
 No Pacote 3, a antiga fronteira provisória `completeHand()` foi substituída por
 `resolveTrick()`. A mão encerra automaticamente quando um jogador conquista duas
 vazas ou quando o destinatário corre de uma proposta (Pacote 5). O vencedor de cada vaza
-inicia a seguinte. Não há pontuação de partida. Consulte a documentação do
+inicia a seguinte. O Pacote 7 integra os resultados ao placar. Consulte a documentação do
 Pacote 3 para histórico, resultados e consistência de zonas.
 
 As transições de ciclo inválidas lançam erro sem alteração de estado. Consultas
@@ -69,4 +71,4 @@ anteriores à compra. Não existe corte, callback de corte ou operação equival
 Validação: `npm test` cobre ordem de compra, alternância, turnos, ações inválidas,
 repetições, fases, RNG, esgotamento e preservação de instâncias e metadados.
 `npm run build` valida a aplicação existente; o controlador ainda não é importado
-pelas cenas. Não há pontuação acumulada de partida ou interface nova.
+pelas cenas. Não há interface nova neste motor.

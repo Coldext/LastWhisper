@@ -38,11 +38,10 @@ para sua quantidade. Cartas não utilizadas ao final de mãos anteriores não s�
 reveladas pelo histórico. A lista de faces do baralho padrão é conhecimento das
 regras; ela não representa conhecimento de onde as cartas estão na partida.
 
-O controlador ainda não implementa pontuação de partida. Por padrão, `score`
-é `null`; um futuro coordenador pode fornecer `{ score: { player, opponent } }`
-como terceiro argumento do adaptador. Somente esses dois valores inteiros não
-negativos são copiados. Este pacote não calcula pontos nem usa placares para
-decidir apostas.
+Desde o [Pacote 7](match-cycle-v0.3.md), `score` é o placar oficial do
+controlador. A observação também identifica a geração do baralho e considera em
+`revealedCards` somente faces ainda indisponíveis nessa geração, pois cartas
+de gerações anteriores podem voltar a circular após reembaralhar o descarte.
 
 A estratégia intermediária:
 

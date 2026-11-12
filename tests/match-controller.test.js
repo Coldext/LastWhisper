@@ -21,7 +21,7 @@ function pendingResolution(match) {
 }
 
 function finishHand(match) {
-  while (match.phase !== MATCH_PHASES.HAND_COMPLETE) {
+  while (![MATCH_PHASES.HAND_COMPLETE, MATCH_PHASES.MATCH_COMPLETE].includes(match.phase)) {
     if (match.phase === MATCH_PHASES.AWAITING_PLAY) pendingResolution(match);
     match.resolveTrick();
   }
@@ -207,8 +207,7 @@ test('successive hands alternate starter and deal order, retaining objects and m
       const oldCards = [...match.handOf('player'), ...match.handOf('opponent'),
         ...match.deck.cardsIn('table'), match.vira];
       const top = match.deck.drawPile.reverse();
-      match.startHand();
-      match.deal();
+      assert.equal(match.acknowledgeHandResult(match.handNumber), true);
       const first = number % 2 ? initial : PLAYER_IDS.find(id => id !== initial);
       assert.equal(match.handNumber, number);
       assert.equal(match.firstPlayerId, first);
@@ -243,8 +242,7 @@ test('RNG is injected, deterministic, validated and used only for the initial sh
   }
   pendingResolution(first);
   finishHand(first);
-  first.startHand();
-  first.deal();
+  first.acknowledgeHandResult(first.handNumber);
   assert.equal(calls, 51);
   for (const rng of [null, 1, 'random']) {
     assert.throws(() => new MatchController({ rng }), TypeError);
@@ -264,27 +262,26 @@ test('RNG is injected, deterministic, validated and used only for the initial sh
   assert.equal(JSON.stringify(activeDeck), before);
 });
 
-test('exhaustion never replenishes or changes the previous hand, starter or metadata', () => {
+test('exhaustion replenishes only between completed hands; insufficient eligible cards fail atomically', () => {
   const match = createDealt();
   for (let number = 1; number <= 7; number++) {
     pendingResolution(match);
     finishHand(match);
     if (number < 7) {
-      match.startHand();
-      match.deal();
+      match.acknowledgeHandResult(match.handNumber);
     }
   }
   assert.equal(match.deck.remaining, 3);
-  const before = snapshot(match);
-  assert.throws(() => match.startHand(), RangeError);
-  assert.equal(snapshot(match), before);
+  const cards = match.deck.cards;
+  assert.equal(match.acknowledgeHandResult(match.handNumber), true);
+  assert.equal(match.deck.remaining, 45);
+  assert.equal(match.deckEpoch, 1);
+  assert.deepEqual(match.deck.cards, cards);
   assertPartition(match);
-  // Exhaustion after preparation must also fail before discarding the old hand.
-  const prepared = createDealt();
-  pendingResolution(prepared);
-  finishHand(prepared);
+  // Cards held by an unrelated owner are not eligible for replenishment.
+  const prepared = new MatchController({ rng: () => 0 });
   prepared.startHand();
-  prepared.deck.draw(39);
+  prepared.deck.draw(46, { zone: 'playerHand', ownerId: 'guest' });
   const beforeDeal = snapshot(prepared);
   assert.throws(() => prepared.deal(), RangeError);
   assert.equal(snapshot(prepared), beforeDeal);
