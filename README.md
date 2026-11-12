@@ -7,13 +7,13 @@
 </p>
 
 <p align="center">
-  <code>v0.2.0 · Em desenvolvimento</code><br />
+  <code>v0.3.0 · Integração jogável · Pacote 8/9</code><br />
   <code>JavaScript</code> <code>Phaser 4</code> <code>Vite 8</code>
 </p>
 
 **Last Whisper** é um jogo de cartas com proposta roguelite, inspirado no Truco e ambientado em fantasia sombria. Sobre uma mesa austera, entre cartas ocultas e adversários misteriosos, a visão é transformar cada mão em uma escolha de risco, blefe e sobrevivência.
 
-**A versão atual é um protótipo interativo de interface e infraestrutura de cartas.** Já é possível distribuir e arrastar cartas; confrontos completos, apostas e expedições ainda fazem parte do planejamento.
+**A versão atual permite disputar partidas completas de Truco contra uma IA intermediária.** Distribuição, manilhas, vazas, apostas, blefes, placar até 12 e próximas mãos estão integrados à mesa Phaser. A visão roguelite continua em planejamento.
 
 [Sobre o jogo](#sobre-o-jogo) · [Estado atual](#estado-atual) · [Como executar](#como-executar) · [Controles](#controles) · [Roadmap](#roadmap) · [Capturas](#capturas-de-tela)
 
@@ -27,11 +27,11 @@ O objetivo é construir estratégias ao longo da jornada: decidir quando arrisca
 
 | Elemento | Proposta e situação atual |
 | --- | --- |
-| **Baralho compartilhado** | Um monte de 52 cartas, sem Joker, serve aos dois jogadores e à vira. Geração, embaralhamento e distribuição já funcionam, sem reposição automática. As regras definitivas de reembaralhamento virão depois. |
-| **Truco reinterpretado** | Vira, manilhas, turnos, três vazas e apostas formam a base planejada. A vira já é separada e exibida; cálculo de força, resolução de vazas e apostas ainda não existem. |
+| **Baralho compartilhado** | Um monte de 52 cartas, sem Joker, serve aos dois jogadores e à vira. A distribuição é alternada. Quando necessário entre mãos, somente o descarte elegível volta a circular, preservando as instâncias. |
+| **Truco reinterpretado** | Vira, manilhas, turnos, até três vazas e apostas `1 → 3 → 6 → 9 → 12` estão implementados. Naipes desempatam todos os valores; duas vitórias em vazas encerram a mão. |
 | **Encantamentos** | Sangue, Ferro, Ouro e Visão são conceitos planejados. A estrutura já permite guardar um encantamento por carta e substituí-lo explicitamente, mas não executa efeitos. |
 | **Modificadores** | Cartas já podem armazenar modificadores identificados individualmente. Seu processamento e suas regras de duração serão implementados no futuro. |
-| **Tokens e blefe** | Consumíveis estratégicos com identidade potencialmente oculta. A intenção é tornar perceptíveis sua quantidade e seu consumo, sem revelar necessariamente o efeito. Hoje, o contador e o botão são demonstrativos. |
+| **Tokens e blefe** | A IA já pode blefar nas apostas com probabilidade e limites configuráveis. Tokens consumíveis continuam planejados. |
 | **Combate** | HP, escudo e dano associados aos resultados das mãos estão planejados. Não há combate funcional nesta versão. |
 | **Progressão roguelite** | Expedições com adversários, recompensas, loja e construção de estratégias entre tentativas são parte da visão futura. |
 
@@ -49,11 +49,11 @@ Cinco presenças orientam a direção artística planejada. São conceitos visua
 | **O Oráculo** | Uma figura misteriosa ligada a presságios. |
 | **O Rei Sem Rosto** | A figura final, associada a uma coroa quebrada. |
 
-O nome **O Errante** aparece no cabeçalho da demonstração atual. Isso ainda não representa um adversário com IA implementada.
+**O Errante** identifica a IA intermediária da mesa atual. Estratégias, falas e animações específicas de personagens continuam como extensões futuras.
 
 ## Estado atual
 
-**v0.2.0 — Fundação visual e arquitetura de cartas.**
+**v0.3.0 — Truco jogável, integração do Pacote 8 de 9.**
 
 Implementado no código:
 
@@ -66,14 +66,18 @@ Implementado no código:
 - Controle de zonas e propriedade das cartas, sem duplicação de jogadas.
 - Estrutura serializável para encantamentos e modificadores, separada dos objetos Phaser.
 - Testes automatizados de cartas, baralho e interação, além de um script de regressão em navegador.
+- Motor independente de Phaser para turnos, manilhas, vazas, apostas e pontuação.
+- IA com observação restrita, decisões de cartas e apostas e blefes controlados.
+- Resultados visíveis, transição automática entre mãos e telas de Vitória/Derrota.
+- Modais de aposta, bloqueio de ações inválidas e cancelamento de tarefas antigas ao reiniciar ou sair.
 
-**Ainda não implementado:** turnos, manilhas funcionais, resolução de vazas, pontuação, apostas, IA, efeitos de cartas, tokens funcionais, HP, dano, escudo, loja, expedições, áudio e multiplayer. Os rótulos de vaza e tokens na interface são demonstrativos.
+**Ainda não implementado:** efeitos de cartas, tokens funcionais, HP, dano, escudo, loja, expedições, áudio, multiplayer e corte.
 
-### Como a demonstração usa o monte
+### Ciclo da partida
 
-**NOVA MÃO** mantém o mesmo baralho. As cartas da mão anterior, da mesa e a vira vão para o descarte, e outras sete são compradas. Identidades, encantamentos e modificadores são preservados. Se faltarem cartas, a mão atual permanece intacta e um aviso é exibido; não há reembaralhamento automático.
+Cada mão começa valendo 1 ponto. O vencedor recebe o valor aceito; ao correr, o proponente recebe o último valor aceito. A partida termina aos 12 ou mais pontos, sem regra especial de mão de 11. Depois da apresentação do resultado, a próxima mão começa automaticamente, alternando o primeiro jogador.
 
-**REINICIAR DEMO** começa uma demonstração nova, com outras instâncias e metadados iniciais. Voltar ao menu e iniciar novamente tem o mesmo efeito. Essas operações do protótipo não definem as futuras regras de partida ou a duração dos encantamentos.
+O baralho permanece compartilhado. Cartas da mão encerrada são descartadas; se faltarem cartas no monte, o descarte elegível é reembaralhado. IDs, encantamentos e modificadores permanecem intactos. **REINICIAR** ou **JOGAR NOVAMENTE** cria outra partida com instâncias novas.
 
 ## Como executar
 
@@ -106,7 +110,7 @@ npm run build
 npm run preview
 ```
 
-Na validação da v0.2, os **17 testes nativos** passaram, assim como o build de produção. O build emite um aviso de tamanho do bundle; isso não impede a compilação.
+Na validação do Pacote 8, os **81 testes nativos** passaram, assim como o build de produção. O build emite o aviso existente de tamanho do bundle.
 
 Para a regressão opcional com navegador:
 
@@ -114,7 +118,7 @@ Para a regressão opcional com navegador:
 npm run test:browser
 ```
 
-O script inicia seu próprio servidor Vite e usa Edge em modo headless. O caminho padrão é o executável do Edge no Windows; para outro executável Chromium compatível, defina `BROWSER_PATH`. Ele cobre mouse, toque emulado em portrait/landscape, retornos, cliques repetidos, bloqueio de novas jogadas, resize, esgotamento do monte e navegação. Também atualiza as capturas em `artifacts/cards-v0.2/`.
+O script inicia seu próprio servidor Vite e usa Edge em modo headless. O caminho padrão é o executável do Edge no Windows; para outro Chromium compatível, defina `BROWSER_PATH`. Cobre mouse, toque emulado em portrait/landscape, arrastos, rotação, apostas, transições, telas finais, reinício e menu. As capturas atuais ficam em `artifacts/truco-v0.3/`.
 
 A regressão passou nos três modos na validação da v0.2. Toque emulado não substitui a verificação em celulares físicos, que permanece pendente.
 
@@ -122,32 +126,34 @@ A regressão passou nos três modos na validação da v0.2. Toque emulado não s
 
 | Ação | Como usar |
 | --- | --- |
-| Entrar na demonstração | Selecione **INICIAR PARTIDA** no menu. |
+| Iniciar uma partida | Selecione **INICIAR PARTIDA** no menu. |
 | Mover uma carta | Clique e arraste com o mouse, ou pressione e arraste com o dedo. |
-| Colocar uma carta na mesa | Solte na região válida, à direita da vira. A carta permanece no ponto de soltura, limitada às bordas da área. |
+| Colocar uma carta na mesa | No seu turno, solte na região indicada à direita da vira. A carta fica limitada às bordas dessa área. |
 | Cancelar uma soltura | Solte fora da região válida. A carta volta à mão e fica disponível ao terminar a animação. |
-| Distribuir outra mão | Selecione **NOVA MÃO**, usando as cartas restantes do mesmo monte. |
-| Começar outra demonstração | Selecione **REINICIAR DEMO**, no cabeçalho. |
+| Pedir aumento | Selecione **TRUCO** ou **PEDIR** quando o botão estiver habilitado. |
+| Responder à aposta | Escolha **ACEITAR**, **CORRER** ou **AUMENTAR**, quando disponível. |
+| Próxima mão | Aguarde a apresentação do resultado; a distribuição é automática. |
+| Reiniciar | Selecione **REINICIAR** no cabeçalho ou **JOGAR NOVAMENTE** na tela final. |
 | Voltar ao menu | Selecione **‹ MENU**. |
 
-Cartas já jogadas ficam bloqueadas. **TRUCO** e **TOKENS** são botões demonstrativos e ainda não acionam mecânicas de partida.
+Cartas ficam bloqueadas fora do seu turno, durante propostas pendentes, animações e resultados. Ao terminar a partida, use Jogar novamente ou Menu.
 
 ## Capturas de tela
 
-Capturas reais da demonstração v0.2, produzidas pelo script de regressão.
+Capturas reais da integração Phaser, produzidas pelo script de regressão. As capturas anteriores da v0.2 permanecem em `artifacts/cards-v0.2/`.
 
 ### Mesa no desktop
 
-![Mesa de Last Whisper no desktop: vira à esquerda, três cartas jogadas na região central e cartas ocultas do adversário ao fundo.](artifacts/cards-v0.2/desktop.png)
+![Mesa de Last Whisper: vira, cartas jogadas, turno, placar e cartas ocultas da IA.](artifacts/truco-v0.3/desktop-table.png)
 
 <details>
   <summary>Ver a mesa em portrait e landscape</summary>
 
 <p align="center">
-  <img src="artifacts/cards-v0.2/portrait-touch.png" alt="Mesa da demonstração em portrait, com três cartas jogadas e controles na parte inferior." width="360" />
+  <img src="artifacts/truco-v0.3/portrait-touch-bet.png" alt="Modal de apostas em portrait: Aceitar, Correr e Aumentar." width="360" />
 </p>
 
-![Mesa da demonstração em landscape, com cartas, vira e controles adaptados à altura reduzida.](artifacts/cards-v0.2/landscape-touch.png)
+![Mesa após rotação para landscape, com cartas e controles adaptados à altura reduzida.](artifacts/truco-v0.3/portrait-touch-table.png)
 
 </details>
 
@@ -158,7 +164,7 @@ Etapas organizadas a partir da visão do projeto e do estado da v0.2, sem datas 
 | Fase | Escopo | Situação |
 | --- | --- | --- |
 | **1 · Fundação** | Phaser, estrutura do projeto, interface básica e responsividade. | Base implementada. |
-| **2 · Truco básico** | Baralho, distribuição, vira, manilhas, turnos, vazas, apostas e IA. | Parcial: baralho, distribuição e vira disponíveis; regras e IA pendentes. |
+| **2 · Truco básico** | Baralho, distribuição, vira, manilhas, turnos, vazas, apostas e IA. | Integrado à interface; Pacote 8/9 da v0.3.0. |
 | **3 · Combate** | HP, dano, escudo e condições de vitória. | Planejado. |
 | **4 · Tokens e blefe** | Consumíveis, uso estratégico e informações ocultas. | Planejado; interface demonstrativa disponível. |
 | **5 · Encantamentos e loja** | Efeitos nas cartas, economia e construção de estratégias. | Estrutura de dados disponível; efeitos e loja pendentes. |
@@ -206,6 +212,8 @@ artifacts/       # Capturas reais da demonstração
 ```
 
 A lógica das cartas e do baralho funciona sem importar Phaser. A definição original, a instância física, sua localização e sua apresentação têm responsabilidades separadas. Para os detalhes de identidade, zonas, metadados e APIs, consulte [Cartas e monte compartilhado — v0.2](docs/cards-v0.2.md).
+
+A divisão entre motor, coordenação visual, entrada e desenho está descrita em [Integração Phaser — Pacote 8](docs/phaser-integration-v0.3.md).
 
 ## Contribuições e licença
 

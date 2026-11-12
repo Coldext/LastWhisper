@@ -24,17 +24,18 @@ export function label(scene, x, y, value, size = 16, color = THEME.ivory, opts =
   }).setOrigin(opts.originX ?? 0.5, opts.originY ?? 0.5);
 }
 
-export function button(scene, { x, y, w, h, title, primary = false, onClick, fontSize = 15 }) {
+export function button(scene, { x, y, w, h, title, primary = false, onClick, fontSize = 15, enabled = true }) {
   const fill = primary ? THEME.blood : THEME.panel;
   const border = primary ? 0xc66d6b : THEME.bronze;
   const bg = rect(scene, x - w / 2, y - h / 2, w, h, fill, border, 5);
   const txt = label(scene, x, y, title, fontSize, THEME.ivory, { bold: true });
   const hit = scene.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
-  hit.on('pointerdown', onClick);
   // Feedback também funciona com toque (sem depender de hover).
   hit.on('pointerdown', () => { bg.setAlpha(0.75); txt.setAlpha(0.75); });
   hit.on('pointerup', () => { bg.setAlpha(1); txt.setAlpha(1); });
   hit.on('pointerout', () => { bg.setAlpha(1); txt.setAlpha(1); });
+  hit.on('pointerdown', onClick);
+  if (!enabled) { hit.disableInteractive(); bg.setAlpha(0.45); txt.setAlpha(0.45); }
   return hit;
 }
 

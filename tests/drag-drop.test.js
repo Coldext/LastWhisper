@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { HandState } from '../src/logic/HandState.js';
+import { MatchController } from '../src/game/MatchController.js';
 import { addModifier, setEnchantment } from '../src/game/cards/cardModifiers.js';
 
 // Execute the actual scene handlers with deterministic input/tween adapters.
@@ -9,8 +10,9 @@ const source = (await readFile(new URL('../src/scenes/GameScene.js', import.meta
   .replace(/^import .*;$/gm, '');
 const prelude = `const Phaser = { Scene: class {}, Math: { Clamp: (v,a,b)=>Math.max(a,Math.min(b,v)) } };
 const { HandState } = await import(${JSON.stringify(new URL('../src/logic/HandState.js', import.meta.url).href)});
-const { DemoGame } = await import(${JSON.stringify(new URL('../src/game/DemoGame.js', import.meta.url).href)});
-const { cardPresentation } = await import(${JSON.stringify(new URL('../src/ui/cardPresentation.js', import.meta.url).href)});`;
+const { MatchController } = await import(${JSON.stringify(new URL('../src/game/MatchController.js', import.meta.url).href)});
+const { MatchPresenter } = await import(${JSON.stringify(new URL('../src/ui/MatchPresenter.js', import.meta.url).href)});
+const { createTrucoAI } = await import(${JSON.stringify(new URL('../src/game/ai/BettingAI.js', import.meta.url).href)});`;
 const { default: GameScene } = await import(`data:text/javascript;base64,${Buffer.from(prelude + source).toString('base64')}`);
 
 function fixture() {
@@ -19,14 +21,21 @@ function fixture() {
   scene.scale = { on() {}, off() {} };
   scene.events = { once() {} };
   scene.input = { on() {}, off() {}, setDraggable(obj, value) { obj.input.draggable = value; } };
-  scene.tweens = { add(config) { tweens.push(config); } };
-  scene.render = () => { scene.cardObjects = new Map(); };
+  scene.tweens = { add(config) { tweens.push(config); }, killAll() {} };
+  scene.time = { delayedCall() { return { remove() {} }; } };
+  scene.matchFactory = () => new MatchController({ rng: () => 0 });
+  scene.render = () => {
+    scene.prepareHandView();
+    scene.interaction.cancelTransient();
+    scene.viewVersion++;
+    scene.cardObjects = new Map();
+  };
   scene.create();
   scene.cardWidth = 60;
   scene.cardHeight = 84;
   scene.dropArea = { x: 100, y: 100, width: 300, height: 200 };
   scene.isOverDropArea = (x, y) => x >= 100 && x <= 400 && y >= 100 && y <= 300;
-  const cards = scene.gameState.playerHand.map((instance, index) => {
+  const cards = scene.gameState.handOf('player').map((instance, index) => {
     const instanceId = instance.instanceId;
     const data = { handCard: true, instanceId, home: { x: 100 + index * 80, y: 500 } };
     const obj = { active: true, input: { enabled: true, draggable: true },
@@ -41,10 +50,11 @@ function fixture() {
   return { scene, cards, tweens };
 }
 
-test('valid drops lock all three cards and reject 20 repeated starts/moves/ends per card', () => {
-  const { scene, cards } = fixture();
+test('each hand slot can play once; repeated events and subsequent out-of-turn drags are rejected', () => {
   const pointer = { id: 0, x: 101, y: 101 };
-  cards.forEach(card => {
+  for (let slot = 0; slot < 3; slot++) {
+    const { scene, cards } = fixture();
+    const card = cards[slot];
     scene.onDragStart(pointer, card);
     scene.onDragEnd(pointer, card);
     assert.equal(scene.interaction.cards.get(card.getData('instanceId')).state, 'played');
@@ -57,11 +67,14 @@ test('valid drops lock all three cards and reject 20 repeated starts/moves/ends 
       scene.onDragEnd(pointer, card);
     }
     assert.deepEqual([card.x, card.y], [130, 142]);
-  });
-  assert.equal(scene.played.length, 3);
-  assert.equal(new Set(scene.played.map(card => card.instanceId)).size, 3);
-  assert.equal(scene.gameState.playerHand.length, 0);
-  assert.equal(scene.gameState.table.length, 3);
+    assert.equal(scene.played.length, 1);
+    assert.equal(scene.gameState.handOf('player').length, 2);
+    assert.equal(scene.gameState.deck.cardsIn('table').length, 1);
+    assert.equal(scene.gameState.activePlayerId, 'opponent');
+    assert.equal(scene.presenter.busy, true);
+    for (const remaining of cards.filter(item => item !== card)) scene.onDragStart(pointer, remaining);
+    assert.equal(scene.interaction.cards.get(cards[(slot + 1) % 3].getData('instanceId')).state, 'inHand');
+  }
 });
 
 test('invalid returns block input and unlock exactly at completion, repeatedly for mouse and touch IDs', () => {
@@ -100,7 +113,7 @@ test('stale view events and callbacks cannot change a replacement hand', () => {
   const pointer = { id: 0, x: 0, y: 0 };
   scene.onDragStart(pointer, card);
   scene.onDragEnd(pointer, card);
-  scene.resetDemoState();
+  scene.restartMatch();
   scene.cardObjects = new Map();
   tweens[0].onComplete();
   scene.onDragStart(pointer, card);

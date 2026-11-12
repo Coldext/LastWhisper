@@ -31,6 +31,6 @@ export default class MenuScene extends Phaser.Scene {
     button(this, {x:cx, y:btnY, w:Math.min(292,w-50), h:Math.max(46, Math.min(62,h*.095)),
       title:'INICIAR PARTIDA', primary:true, fontSize:small?15:18,
       onClick:()=>this.scene.start('GameScene')});
-    label(this, cx, h-35, 'PROTÓTIPO DE INTERFACE · SEM REGRAS AINDA', Math.max(9,Math.min(12,w*.023)), THEME.muted);
+    label(this, cx, h-35, 'TRUCO · UMA PARTIDA ATÉ 12 PONTOS', Math.max(9,Math.min(12,w*.023)), THEME.muted);
   }
 }
