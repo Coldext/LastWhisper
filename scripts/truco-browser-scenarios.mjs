@@ -104,7 +104,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
       const create=Scene.prototype.create;
       Scene.prototype.create=function(){window.__scene=this;return create.call(this);};
     })()`);
-    await click(mode.width / 2, Math.min(mode.height - 92, mode.height * 0.73));
+    await click(mode.width / 2, Math.min(mode.height - (mode.height < 480 ? 138 : 150), mode.height * 0.73));
     await until(() => evaluate('!!window.__scene?.dropArea'), 'game scene');
     let state = await snapshot();
     assert.equal(state.remaining, 45);
@@ -225,7 +225,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     }
     await control('menu');
     await until(() => evaluate("window.__scene.scene.isActive('MenuScene')"), 'menu navigation');
-    await click(mode.width / 2, Math.min(mode.height - 92, mode.height * 0.73));
+    await click(mode.width / 2, Math.min(mode.height - (mode.height < 480 ? 138 : 150), mode.height * 0.73));
     await until(() => evaluate("window.__scene.scene.isActive('GameScene')"), 'reentry');
     assert.equal((await snapshot()).listeners, 1);
     console.log(`PASS ${mode.name}: drag/drop, AI, rotation, betting, hand results, final screen, restart, safe areas, menu`);

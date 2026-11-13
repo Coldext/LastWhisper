@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <code>v0.3.0 · Truco Jogável</code><br />
+  <code>v0.3.1 · Como Jogar</code><br />
   <code>JavaScript</code> <code>Phaser 4</code> <code>Vite 8</code>
 </p>
 
@@ -53,7 +53,9 @@ Cinco presenças orientam a direção artística planejada. São conceitos visua
 
 ## Estado atual
 
-**v0.3.0 — Truco Jogável, nove pacotes concluídos e validados.**
+**v0.3.1 — Menu Como Jogar, com as regras do Truco jogável da v0.3.0.**
+
+O menu apresenta **JOGAR** e **COMO JOGAR**. O tutorial reúne objetivo, força das cartas, manilhas e fluxo da partida numa cena Phaser com rolagem por mouse ou toque e botão **VOLTAR** fixo. Consulte os [detalhes e validação da v0.3.1](docs/how-to-play-v0.3.1.md).
 
 Implementado no código:
 
@@ -141,7 +143,8 @@ Toque emulado não substitui a verificação em celulares físicos. Safari e Fir
 
 | Ação | Como usar |
 | --- | --- |
-| Iniciar uma partida | Selecione **INICIAR PARTIDA** no menu. |
+| Iniciar uma partida | Selecione **JOGAR** no menu. |
+| Consultar as regras | Selecione **COMO JOGAR**; role com a roda do mouse ou arrastando a tela com toque. **VOLTAR** retorna ao menu. |
 | Mover uma carta | Clique e arraste com o mouse, ou pressione e arraste com o dedo. |
 | Colocar uma carta na mesa | No seu turno, solte na região indicada à direita da vira. A carta fica limitada às bordas dessa área. |
 | Cancelar uma soltura | Solte fora da região válida. A carta volta à mão e fica disponível ao terminar a animação. |
