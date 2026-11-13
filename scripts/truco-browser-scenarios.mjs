@@ -36,6 +36,21 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     const item = await until(async () => { const s = await snapshot(); return s.controls[id]?.enabled && s.controls[id]; }, `control ${id}`);
     await click(item.x, item.y);
   }
+  async function consultTips() {
+    const before = await snapshot();
+    await control('tips');
+    await until(() => evaluate("window.__scene.scene.isActive('TipsScene')"), 'tips over modal');
+    const close = await evaluate(`(() => {
+      const s=window.__scene,t=s.scene.get('TipsScene'),c=document.querySelector('canvas').getBoundingClientRect();
+      return {x:c.left+t.closeButton.x,y:c.top+t.closeButton.y};
+    })()`);
+    await click(close.x,close.y);
+    await until(() => evaluate("!window.__scene.scene.isActive('TipsScene')"), 'tips closed');
+    const after = await snapshot();
+    assert.equal(after.phase,before.phase);
+    assert.deepEqual(after.pending,before.pending);
+    assert.deepEqual(after.score,before.score);
+  }
   async function drag(card, destination) {
     await press(card.x, card.y);
     await move(card.x + 14, card.y - 14);
@@ -167,6 +182,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     await until(async () => (await snapshot()).width === mode.width, 'modal rotation');
     assert.equal((await snapshot()).pending.value, 6);
     await screenshot(`${mode.name}-bet`);
+    await consultTips();
     await control('acceptBet');
     assert.equal((await snapshot()).accepted, 6);
     assert.equal((await snapshot()).active, 'player');
@@ -203,6 +219,7 @@ export async function runScenarios({ cdp, evaluate, frames, press, move, release
     assertButtonLabels(final);
     assert.ok(final.labels.includes(mode.height > mode.width ? 'DERROTA' : 'VITÓRIA'));
     await screenshot(`${mode.name}-final`);
+    await consultTips();
     await control('playAgain');
     assert.equal((await snapshot()).hand, 1);
     assert.deepEqual((await snapshot()).score, { player: 0, opponent: 0 });

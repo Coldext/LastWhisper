@@ -18,6 +18,7 @@ const { default: GameScene } = await import(`data:text/javascript;base64,${Buffe
 function fixture() {
   const scene = new GameScene();
   const tweens = [];
+  scene.scene = { isActive() { return false; }, launch() {} };
   scene.scale = { on() {}, off() {} };
   scene.events = { once() {} };
   scene.input = { on() {}, off() {}, setDraggable(obj, value) { obj.input.draggable = value; } };
@@ -119,6 +120,40 @@ test('stale view events and callbacks cannot change a replacement hand', () => {
   scene.onDragStart(pointer, card);
   assert.equal(scene.interaction.cards.has(card.getData('instanceId')), false);
   assert.equal(scene.played.length, 0);
+});
+
+test('tips block stale card/bet input while a pending card return still finishes normally', () => {
+  const { scene, cards: [card], tweens } = fixture();
+  const pointer = { id: 0, x: 0, y: 0 };
+  scene.onDragStart(pointer, card);
+  scene.onDragEnd(pointer, card);
+  scene.scene.isActive = () => true;
+  tweens[0].onComplete();
+  assert.equal(card.input.enabled, true);
+  scene.onDragStart(pointer, card);
+  scene.onDrag(pointer, card, 200, 200);
+  scene.onDragEnd({ ...pointer, x: 200, y: 200 }, card);
+  assert.equal(scene.gameState.deck.cardsIn('table').length, 0);
+  assert.equal(scene.perform({ type: 'requestRaise', playerId: 'player', value: 3 }), false);
+  scene.scene.isActive = () => false;
+  scene.onDragStart({ ...pointer, x: 200, y: 200 }, card);
+  scene.onDragEnd({ ...pointer, x: 200, y: 200 }, card);
+  assert.equal(scene.gameState.deck.cardsIn('table').length, 1);
+});
+
+test('opening tips settles a human drag and passes only the public vira and hand number', () => {
+  const { scene, cards: [card] } = fixture();
+  scene.onDragStart({ id: 0 }, card);
+  const before = JSON.stringify(scene.gameState.deck);
+  let launch;
+  scene.scene.launch = (name, payload) => { launch = { name, payload }; };
+  scene.openTips();
+  assert.equal(launch.name, 'TipsScene');
+  assert.deepEqual(launch.payload, { handNumber: 1,
+    vira: { rank: scene.gameState.vira.rank, suit: scene.gameState.vira.suit } });
+  assert.equal(JSON.stringify(scene.gameState.deck), before);
+  assert.equal(scene.interaction.cards.get(card.getData('instanceId')).state, 'inHand');
+  assert.deepEqual([card.x, card.y], [100, 500]);
 });
 
 test('resize cancels transient states, preserves played positions and rejects a second pointer', () => {

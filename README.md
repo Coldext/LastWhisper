@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <code>v0.3.1 · Como Jogar</code><br />
+  <code>v0.3.2 · Painel de Dicas na Mesa</code><br />
   <code>JavaScript</code> <code>Phaser 4</code> <code>Vite 8</code>
 </p>
 
@@ -53,9 +53,11 @@ Cinco presenças orientam a direção artística planejada. São conceitos visua
 
 ## Estado atual
 
-**v0.3.1 — Menu Como Jogar, com as regras do Truco jogável da v0.3.0.**
+**LastWhisper v0.3.2 — Painel de Dicas na Mesa**
 
 O menu apresenta **JOGAR** e **COMO JOGAR**. O tutorial reúne objetivo, força das cartas, manilhas e fluxo da partida numa cena Phaser com rolagem por mouse ou toque e botão **VOLTAR** fixo. Consulte os [detalhes e validação da v0.3.1](docs/how-to-play-v0.3.1.md).
+
+Na mesa, **DICAS** abre uma referência com a força das cartas, a hierarquia dos naipes e a vira/manilhas da mão atual. **FECHAR** retorna à mesa. O painel bloqueia cliques nos controles e cartas por baixo, enquanto os temporizadores existentes continuam. Não revela a mão adversária nem recomenda jogadas. Consulte os [detalhes e validação da v0.3.2](docs/tips-v0.3.2.md).
 
 Implementado no código:
 
@@ -125,7 +127,7 @@ npm run build
 npm run preview
 ```
 
-Na validação final, os **82 testes nativos** passaram, assim como o build de produção. A matriz adicional executou **408 partidas com 68 sementes**, 2.102 mãos e 102 reembaralhamentos, sem travamentos ou duplicações. O build mantém o aviso de tamanho do bundle.
+Na validação da v0.3.2, os **86 testes nativos** passaram, assim como o build de produção. A matriz adicional executou **408 partidas com 68 sementes**, 2.102 mãos e 102 reembaralhamentos, sem travamentos ou duplicações. O build mantém o aviso de tamanho do bundle.
 
 Para a regressão opcional com navegador:
 
@@ -145,6 +147,7 @@ Toque emulado não substitui a verificação em celulares físicos. Safari e Fir
 | --- | --- |
 | Iniciar uma partida | Selecione **JOGAR** no menu. |
 | Consultar as regras | Selecione **COMO JOGAR**; role com a roda do mouse ou arrastando a tela com toque. **VOLTAR** retorna ao menu. |
+| Consultar a manilha e hierarquias na mesa | Selecione **DICAS**. Role quando necessário; **FECHAR** ou Escape retorna à mesa. A partida continua durante a consulta. |
 | Mover uma carta | Clique e arraste com o mouse, ou pressione e arraste com o dedo. |
 | Colocar uma carta na mesa | No seu turno, solte na região indicada à direita da vira. A carta fica limitada às bordas dessa área. |
 | Cancelar uma soltura | Solte fora da região válida. A carta volta à mão e fica disponível ao terminar a animação. |

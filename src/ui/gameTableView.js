@@ -11,7 +11,7 @@ const pointText = points => `${points} ${points === 1 ? 'PONTO' : 'PONTOS'}`;
 function control(scene, id, options, callback) {
   const version = scene.viewVersion;
   const hit = button(scene, { ...options, onClick: () => {
-    if (scene.viewVersion === version && hit.active) callback(version);
+    if (scene.viewVersion === version && hit.active && !scene.scene.isActive('TipsScene')) callback(version);
   } });
   scene.controls.set(id, hit);
   return hit;
@@ -41,14 +41,16 @@ export function renderGameTable(scene) {
   const w = scene.scale.width, h = scene.scale.height;
   if (w < 200 || h < 260) return;
   const compact = h < 510, cx = w / 2;
+  const narrow = w < 680;
   background(scene, w, h);
   control(scene, 'menu', { x: 48, y: 25, w: 88, h: 40, title: '‹ MENU', fontSize: 11 }, () => scene.returnToMenu());
-  control(scene, 'restart', { x: w - 62, y: 25, w: 112, h: 40, title: 'REINICIAR', fontSize: 10 }, () => scene.restartMatch());
-  label(scene, cx, 21, 'O ERRANTE', Math.min(20, w * 0.038), THEME.ivory, { serif: true, bold: true });
-  label(scene, cx, !compact && w < 400 ? 54 : 48,
+  control(scene, 'restart', { x: narrow ? cx : w - 62, y: 25, w: narrow ? 88 : 112, h: 40, title: 'REINICIAR', fontSize: 10 }, () => scene.restartMatch());
+  control(scene, 'tips', { x: narrow ? w - 44 : w - 170, y: 25, w: 80, h: 44, title: 'DICAS', fontSize: 11 }, () => scene.openTips());
+  if (!narrow) label(scene, cx, 21, 'O ERRANTE', Math.min(20, w * 0.038), THEME.ivory, { serif: true, bold: true });
+  label(scene, cx, narrow ? 54 : 48,
     `VOCÊ ${view.score.player}  ·  ${view.score.opponent} ERRANTE`, compact ? 12 : 15, THEME.paper);
-  scene.enemyY = compact ? h * 0.235 : h * 0.185;
-  const enemyWidth = compact ? 25 : Math.min(42, w * 0.1);
+  scene.enemyY = compact ? Math.max(77, h * 0.235) : h * 0.185;
+  const enemyWidth = compact ? 22 : Math.min(42, w * 0.1);
   for (let i = 0; i < view.opponentCardCount; i++) {
     card(scene, cx + (i - (view.opponentCardCount - 1) / 2) * (enemyWidth + 8), scene.enemyY, enemyWidth, null, false, true);
   }

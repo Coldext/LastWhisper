@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
 import HowToPlayScene from './scenes/HowToPlayScene.js';
-import { GAME_TITLE } from './version.js';
+import TipsScene from './scenes/TipsScene.js';
+import { GAME_TITLE, RELEASE_NAME } from './version.js';
 import './style.css';
 
-document.title = GAME_TITLE;
+document.title = `${GAME_TITLE} — ${RELEASE_NAME}`;
 
 const config = {
   type: Phaser.AUTO,
@@ -19,7 +20,7 @@ const config = {
     width: document.getElementById('game').clientWidth,
     height: document.getElementById('game').clientHeight,
   },
-  scene: [MenuScene, GameScene, HowToPlayScene],
+  scene: [MenuScene, GameScene, HowToPlayScene, TipsScene],
 };
 
 new Phaser.Game(config);

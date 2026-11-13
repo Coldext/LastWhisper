@@ -107,7 +107,8 @@ try {
   await cdp('Runtime.enable');
   await cdp('Page.enable');
   await cdp('Network.enable');
-  const { runScenarios } = await import(process.argv.includes('--how-to-play') ? './how-to-play-browser-scenarios.mjs'
+  const { runScenarios } = await import(process.argv.includes('--tips') ? './tips-browser-scenarios.mjs'
+    : process.argv.includes('--how-to-play') ? './how-to-play-browser-scenarios.mjs'
     : productionPreview ? './pages-browser-smoke.mjs' : './truco-browser-scenarios.mjs');
   await runScenarios({ cdp, evaluate, frames, press, move, release, click,
     setTouch: value => { touch = value; },

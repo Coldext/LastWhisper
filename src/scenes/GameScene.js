@@ -18,6 +18,7 @@ export default class GameScene extends Phaser.Scene {
     this.onResize = () => this.render();
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', () => {
+      this.scene.stop('TipsScene');
       this.presenter?.dispose();
       this.tweens.killAll();
       this.viewVersion++;
@@ -56,6 +57,23 @@ export default class GameScene extends Phaser.Scene {
     this.scene.start('MenuScene');
   }
 
+  openTips() {
+    if (this.scene.isActive('TipsScene')) return;
+    // Settle only a possible in-progress human drag; AI timers/animations keep running.
+    for (const [id, object] of this.cardObjects) {
+      const state = this.interaction.cards.get(id);
+      if (state?.state !== 'dragging') continue;
+      this.interaction.returnCard(id, state.pointer);
+      this.interaction.finishReturn(id);
+      const home = object.getData('home');
+      object.setPosition(home.x, home.y).setScale(1).setDepth(0);
+    }
+    this.dropHighlight?.setVisible(false);
+    const vira = this.gameState.vira;
+    this.scene.launch('TipsScene', { handNumber: this.gameState.handNumber,
+      vira: vira ? { rank: vira.rank, suit: vira.suit } : null });
+  }
+
   prepareHandView() {
     if (this.viewHandNumber === this.gameState.handNumber) return;
     this.viewHandNumber = this.gameState.handNumber;
@@ -80,18 +98,18 @@ export default class GameScene extends Phaser.Scene {
   installDragHandlers() {
     this.onDragStart = (pointer, obj) => {
       const id = obj.getData('instanceId');
-      if (!this.isCurrentCard(obj) || !this.canDrag(id) || !this.interaction.start(id, pointer.id)) return;
+      if (this.scene.isActive('TipsScene') || !this.isCurrentCard(obj) || !this.canDrag(id) || !this.interaction.start(id, pointer.id)) return;
       obj.setDepth(50).setScale(1.06);
     };
     this.onDrag = (pointer, obj, x, y) => {
       const id = obj.getData('instanceId');
-      if (!this.isCurrentCard(obj) || !this.canDrag(id) || !this.interaction.isDragging(id, pointer.id)) return;
+      if (this.scene.isActive('TipsScene') || !this.isCurrentCard(obj) || !this.canDrag(id) || !this.interaction.isDragging(id, pointer.id)) return;
       obj.setPosition(x, y);
       this.dropHighlight?.setVisible(this.isOverDropArea(pointer.x, pointer.y));
     };
     this.onDragEnd = (pointer, obj) => {
       const id = obj.getData('instanceId');
-      if (!this.isCurrentCard(obj) || !this.canDrag(id) || !this.interaction.isDragging(id, pointer.id)) return;
+      if (this.scene.isActive('TipsScene') || !this.isCurrentCard(obj) || !this.canDrag(id) || !this.interaction.isDragging(id, pointer.id)) return;
       this.dropHighlight?.setVisible(false);
       if (this.isOverDropArea(pointer.x, pointer.y)) {
         const area = this.dropArea;
@@ -130,7 +148,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   perform(action, version = this.viewVersion) {
-    if (version !== this.viewVersion) return false;
+    if (version !== this.viewVersion || this.scene.isActive('TipsScene')) return false;
     this.message = '';
     return this.presenter.dispatch(action);
   }
@@ -157,5 +175,8 @@ export default class GameScene extends Phaser.Scene {
     this.controls = new Map();
     this.children.removeAll(true);
     renderGameTable(this);
+    const vira = this.gameState.vira;
+    this.events.emit('tableReferenceChanged', { handNumber: this.gameState.handNumber,
+      vira: vira ? { rank: vira.rank, suit: vira.suit } : null });
   }
 }
